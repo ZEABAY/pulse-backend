@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
@@ -43,6 +43,11 @@
         <zeabay-common.version>1.0.0-SNAPSHOT</zeabay-common.version>
         <lombok.version>1.18.42</lombok.version>
 
+        <!-- quality gate -->
+        <spotless.version>3.2.1</spotless.version>
+        <googlejavaformat.version>1.34.1</googlejavaformat.version>
+        <spotless.skip>false</spotless.skip>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -81,7 +86,9 @@
                     <executions>
                         <execution>
                             <id>enforce</id>
-                            <goals><goal>enforce</goal></goals>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
                             <configuration>
                                 <rules>
                                     <requireJavaVersion>
@@ -131,8 +138,43 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>3.5.4</version>
                 </plugin>
+
+                <!-- Spotless: format quality gate -->
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                    <configuration>
+                        <skip>${spotless.skip}</skip>
+                        <java>
+                            <googleJavaFormat>
+                                <version>${googlejavaformat.version}</version>
+                            </googleJavaFormat>
+                            <removeUnusedImports/>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                        </java>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotless-check</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- pluginManagement tek başına çalıştırmaz; burada aktif ediyoruz -->
+        <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 
 </project>

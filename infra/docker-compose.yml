@@ -1,3 +1,5 @@
+name: pulse
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -11,10 +13,12 @@ services:
     volumes:
       - pulse_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pulse -d pulse"]
+      test: [ "CMD-SHELL", "pg_isready -U pulse -d pulse" ]
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - pulse
 
   redis:
     image: redis:7-alpine
@@ -22,51 +26,73 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - pulse
 
   kafka:
     image: apache/kafka:3.7.0
     container_name: pulse-kafka
     ports:
+      # Host -> Kafka
       - "9092:9092"
     environment:
-      # KRaft Settings
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=broker,controller
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@pulse-kafka:9093
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      # Listeners
-      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      # --- KRaft combined mode (broker+controller tek container) ---
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+
+      # 3 listener:
+      # - PLAINTEXT (docker network içi) :19092
+      # - PLAINTEXT_HOST (host erişimi)  :9092
+      # - CONTROLLER (kraft)             :9093
+      KAFKA_LISTENERS: "PLAINTEXT://:19092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://pulse-kafka:19092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@pulse-kafka:9093"
+
+      # single-node dev defaults
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+
+      # data dir (volume'a bağlayacağız)
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+
     volumes:
       - pulse_kafka:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1" ]
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 12
+    networks:
+      - pulse
 
-  #dev için UI
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: pulse-kafka-ui
     ports:
       - "8089:8080"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=pulse
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=pulse-kafka:9092
+      KAFKA_CLUSTERS_0_NAME: "pulse"
+      # Docker network içi listener
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "pulse-kafka:19092"
     depends_on:
       kafka:
         condition: service_healthy
+    networks:
+      - pulse
+
+networks:
+  pulse:
+    driver: bridge
 
 volumes:
   pulse_pg:

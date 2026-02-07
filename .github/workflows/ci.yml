@@ -9,11 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -22,5 +21,8 @@ jobs:
           java-version: "25"
           cache: maven
 
-      - name: Build
-        run: mvn -q -DskipTests=false clean verify
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      - name: Build (with tests)
+        run: ./mvnw -B -ntp clean verify
