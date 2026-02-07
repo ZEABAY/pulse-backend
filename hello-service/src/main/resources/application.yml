@@ -1,18 +1,11 @@
 server:
   port: 65000
 
-
 spring:
   application:
     name: hello-service
   main:
     web-application-type: reactive
-
-# Actuator / health
-management:
-  info:
-    env:
-      enabled: true
 
 info:
   app:
@@ -26,5 +19,4 @@ logging:
     level: "%5p [${spring.application.name:app},%X{traceId}]"
   level:
     root: INFO
-    org.springframework.boot.autoconfigure: DEBUG
     com.zeabay.common: DEBUG
