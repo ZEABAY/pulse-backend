@@ -12,8 +12,11 @@ class HelloServiceIntegrationTest {
   @LocalServerPort int port;
 
   @Test
-  void traceId_is_added_to_response_and_propagated_to_outbound_call() {
-    String traceId = "abc-123";
+  void traceparent_is_supported_and_has_precedence_over_x_trace_id() {
+    String traceparent = "00-4BF92F3577B34DA6A3CE929D0E0E4736-00F067AA0BA902B7-01";
+    String expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+
+    String xTraceId = "abc-123";
 
     WebTestClient webTestClient =
         WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
@@ -21,17 +24,18 @@ class HelloServiceIntegrationTest {
     webTestClient
         .get()
         .uri("/call-self")
-        .header(ZeabayCommonAutoConfiguration.TRACE_ID_HEADER, traceId)
+        .header("traceparent", traceparent)
+        .header(ZeabayCommonAutoConfiguration.TRACE_ID_HEADER, xTraceId)
         .exchange()
         .expectStatus()
         .isOk()
         .expectHeader()
-        .valueEquals(ZeabayCommonAutoConfiguration.TRACE_ID_HEADER, traceId)
+        .valueEquals(ZeabayCommonAutoConfiguration.TRACE_ID_HEADER, expectedTraceId)
         .expectBody()
         .jsonPath("$.traceId")
-        .isEqualTo(traceId)
+        .isEqualTo(expectedTraceId)
         .jsonPath("$.downstreamTraceId")
-        .isEqualTo(traceId)
+        .isEqualTo(expectedTraceId)
         .jsonPath("$.body")
         .isEqualTo("pong");
   }
