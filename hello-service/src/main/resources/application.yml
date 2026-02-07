@@ -10,20 +10,6 @@ spring:
 
 # Actuator / health
 management:
-  endpoints:
-    web:
-      base-path: /actuator
-      exposure:
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
   info:
     env:
       enabled: true

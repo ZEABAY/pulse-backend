@@ -39,4 +39,14 @@ class HelloServiceIntegrationTest {
         .jsonPath("$.body")
         .isEqualTo("pong");
   }
+
+  @Test
+  void actuator_probes_are_up() {
+    WebTestClient webTestClient =
+        WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+
+    webTestClient.get().uri("/actuator/health").exchange().expectStatus().isOk();
+    webTestClient.get().uri("/actuator/health/liveness").exchange().expectStatus().isOk();
+    webTestClient.get().uri("/actuator/health/readiness").exchange().expectStatus().isOk();
+  }
 }
