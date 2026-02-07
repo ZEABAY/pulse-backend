@@ -9,9 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./pulse-backend
 
     steps:
       - name: Checkout
@@ -27,5 +24,8 @@ jobs:
       - name: Make mvnw executable
         run: chmod +x mvnw
 
-      - name: Build (with tests)
-        run: ./mvnw -B -ntp clean verify
+      # -B: Batch mode (daha temiz log)
+      # -ntp: No transfer progress (indirme loglarını gizler)
+      # -fae: Fail at end (tüm modülleri test et, hataları sonda göster)
+      - name: Build and Verify
+        run: ./mvnw -B -ntp clean verify -fae
