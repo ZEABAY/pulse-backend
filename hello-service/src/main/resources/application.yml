@@ -1,0 +1,39 @@
+server:
+  port: 65000
+
+
+spring:
+  application:
+    name: hello-service
+  main:
+    web-application-type: reactive
+
+# Actuator / health
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: "Pulse Sprint 0 hello-service"
+    version: "1.0.0-SNAPSHOT"
+
+# Log format
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:app},%X{traceId}]"
+  level:
+    root: INFO
+    org.springframework.boot.autoconfigure: DEBUG
+    com.zeabay.common: DEBUG
