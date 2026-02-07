@@ -41,7 +41,7 @@ class HelloServiceIntegrationTest {
   }
 
   @Test
-  void actuator_probes_are_up() {
+  void actuator_probes_are_exposed_by_default() {
     WebTestClient webTestClient =
         WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
 
