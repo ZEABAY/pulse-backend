@@ -13,28 +13,28 @@ services:
     volumes:
       - pulse_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulse} -d ${POSTGRES_DB:-pulse}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulse} -d ${POSTGRES_DB:-pulse}" ]
       interval: 5s
       timeout: 3s
       retries: 20
     restart: unless-stopped
-    networks: [pulse]
+    networks: [ pulse ]
 
   redis:
     image: redis:7-alpine
     container_name: pulse-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - pulse_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 20
     restart: unless-stopped
-    networks: [pulse]
+    networks: [ pulse ]
 
   kafka:
     image: apache/kafka:3.7.0
@@ -68,12 +68,12 @@ services:
     volumes:
       - pulse_kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 5s
       retries: 30
     restart: unless-stopped
-    networks: [pulse]
+    networks: [ pulse ]
 
 volumes:
   pulse_postgres_data:
