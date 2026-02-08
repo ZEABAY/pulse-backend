@@ -1,10 +1,13 @@
 package com.zeabay.pulse.hello;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.zeabay.common.autoconfigure.ZeabayCommonAutoConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @SpringBootTest(
@@ -77,5 +80,36 @@ class HelloServiceIntegrationTest {
         .isEqualTo("Pulse Sprint 0 hello-service")
         .jsonPath("$.app.version")
         .isEqualTo("1.0.0-SNAPSHOT");
+  }
+
+  @Test
+  void prometheus_endpoint_is_exposed_by_default() {
+    webTestClient
+        .get()
+        .uri("/actuator/prometheus")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectHeader()
+        .contentTypeCompatibleWith(MediaType.TEXT_PLAIN)
+        .expectBody(String.class)
+        .consumeWith(
+            res -> {
+              String body = res.getResponseBody();
+              assertTrue(body != null && body.contains("# HELP"));
+            });
+  }
+
+  @Test
+  void actuator_info_contains_build_info_when_build_info_is_generated() {
+    webTestClient
+        .get()
+        .uri("/actuator/info")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.build.version")
+        .exists();
   }
 }
