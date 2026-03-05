@@ -1,4 +1,4 @@
 [submodule "zeabay-common"]
 	path = zeabay-common
 	url = https://github.com/ZEABAY/zeabay-common.git
-	branch = main
+	branch = auth-service

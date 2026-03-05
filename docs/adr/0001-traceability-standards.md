@@ -80,7 +80,7 @@ Kurallar:
 ### 2.4 Hata Yönetimi ve API Yanıt Standardı
 
 - Tüm istisnalar merkezi bir handler (örn. `ZeabayGlobalExceptionHandler`) tarafından yakalanacaktır.
-- Tüm API yanıtları `ApiResponse<T>` formatında dönecektir.
+- Tüm API yanıtları `ZeabayApiResponse<T>` formatında dönecektir.
 
 Hata yanıtlarında şu alanlar **zorunludur**:
 

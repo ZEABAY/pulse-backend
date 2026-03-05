@@ -1,0 +1,64 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  main:
+    web-application-type: reactive
+  
+  # Data configuration
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/pulse
+    username: ${POSTGRES_USER:pulse}
+    password: ${POSTGRES_PASSWORD:pulse}
+  flyway:
+    enabled: false
+  
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+auth:
+  flyway:
+    url: jdbc:postgresql://localhost:5432/pulse
+    user: ${POSTGRES_USER:pulse}
+    password: ${POSTGRES_PASSWORD:pulse}
+
+keycloak:
+  auth-server-url: http://localhost:9080
+  realm: pulse
+  resource: pulse-backend-client
+  credentials:
+    secret: 39D9yoLnSLwiXhZabd0w5npZztfqhWIg
+  admin:
+    username: admin
+    password: admin
+    description: "Pulse Sprint 1 auth-service"
+    version: "1.0.0-SNAPSHOT"
+
+# Log format
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.zeabay.common: DEBUG
+
+# Observability Configurations
+management:
+  tracing:
+    sampling:
+      probability: 1.0 # 100% of traces for DEV environment
+    baggage:
+      correlation:
+        enabled: true
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
