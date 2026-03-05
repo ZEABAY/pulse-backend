@@ -10,4 +10,10 @@ public interface IdentityProviderPort {
   Mono<String> registerUser(RegisterUserCommand command);
 
   Mono<AuthTokenResult> loginUser(LoginCommand command);
+
+  Mono<Void> setEmailVerified(String keycloakId, boolean verified);
+
+  Mono<AuthTokenResult> refreshToken(String refreshToken);
+
+  Mono<Void> logout(String keycloakId);
 }

@@ -6,20 +6,22 @@ spring:
     name: auth-service
   main:
     web-application-type: reactive
-  
-  # Data configuration
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/pulse
     username: ${POSTGRES_USER:pulse}
     password: ${POSTGRES_PASSWORD:pulse}
   flyway:
     enabled: false
-  
   kafka:
     bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/certs
 
 auth:
   flyway:
@@ -27,17 +29,18 @@ auth:
     user: ${POSTGRES_USER:pulse}
     password: ${POSTGRES_PASSWORD:pulse}
 
+# Keycloak: realm 'pulse', client 'pulse-backend-client'.
+# Otomatik kurulum (infra/local keycloak --import-realm) kullanıyorsanız varsayılan secret 'pulse-backend-secret' yeterli.
+# Manuel kurulumda: Keycloak UI → Credentials sekmesindeki Client secret değerini yazın veya KEYCLOAK_CLIENT_SECRET ile verin.
 keycloak:
   auth-server-url: http://localhost:9080
   realm: pulse
   resource: pulse-backend-client
   credentials:
-    secret: 39D9yoLnSLwiXhZabd0w5npZztfqhWIg
+    secret: ${KEYCLOAK_CLIENT_SECRET:pulse-backend-secret}
   admin:
-    username: admin
-    password: admin
-    description: "Pulse Sprint 1 auth-service"
-    version: "1.0.0-SNAPSHOT"
+    username: ${KEYCLOAK_ADMIN_USER:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 # Log format
 logging:
@@ -45,7 +48,22 @@ logging:
     level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
   level:
     root: INFO
-    com.zeabay.common: DEBUG
+    # 1. Kendi Projenin Logları:
+    com.zeabay: DEBUG
+
+    # 2. Keycloak ve Güvenlik Akışları (Yetkilendirme hatalarını bulmak için kritik):
+    org.springframework.security: DEBUG
+
+    # 3. WebFlux HTTP İstek/Yanıt Akışları:
+    org.springframework.web.reactive: DEBUG
+
+    # 4. R2DBC ve PostgreSQL Sorguları:
+    org.springframework.r2dbc: DEBUG
+    io.r2dbc.postgresql.QUERY: DEBUG # Çalışan SQL sorgularını gösterir
+    io.r2dbc.postgresql.PARAM: DEBUG # SQL sorgularına giden parametreleri gösterir
+
+    # 5. Kafka Producer Detayları (Çok gürültü yaparsa INFO'ya veya WARN'a çekebilirsin):
+    org.apache.kafka.clients.producer: DEBUG
 
 # Observability Configurations
 management:
@@ -62,3 +80,8 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+
+
+zeabay:
+  outbox:
+    polling-interval-ms: 10000

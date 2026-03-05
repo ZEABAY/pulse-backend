@@ -1,5 +1,7 @@
 package com.zeabay.pulse.auth.infrastructure.adapter;
 
+import com.zeabay.common.api.exception.BusinessException;
+import com.zeabay.common.api.exception.ErrorCode;
 import com.zeabay.common.keycloak.client.ZeabayKeycloakClient;
 import com.zeabay.common.keycloak.dto.KeycloakRegistrationRequest;
 import com.zeabay.common.keycloak.dto.KeycloakTokenRequest;
@@ -11,6 +13,7 @@ import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -23,29 +26,46 @@ public class KeycloakAdapter implements IdentityProviderPort {
 
   @Override
   public Mono<String> registerUser(RegisterUserCommand command) {
-    KeycloakRegistrationRequest request =
+    return zeabayKeycloakClient.registerUser(
         KeycloakRegistrationRequest.builder()
             .username(command.username())
             .email(command.email())
             .password(command.password())
-            .build();
-
-    return zeabayKeycloakClient.registerUser(request);
+            .build());
   }
 
   @Override
   public Mono<AuthTokenResult> loginUser(LoginCommand command) {
-    KeycloakTokenRequest request =
-        KeycloakTokenRequest.builder()
-            .usernameOrEmail(command.usernameOrEmail())
-            .password(command.password())
-            .build();
-
     return zeabayKeycloakClient
-        .loginUser(request)
-        .map(
-            response ->
-                new AuthTokenResult(
-                    response.accessToken(), response.refreshToken(), response.expiresIn()));
+        .loginUser(
+            KeycloakTokenRequest.builder()
+                .usernameOrEmail(command.usernameOrEmail())
+                .password(command.password())
+                .build())
+        .map(r -> new AuthTokenResult(r.accessToken(), r.refreshToken(), r.expiresIn()))
+        .onErrorMap(
+            WebClientResponseException.class,
+            ex -> new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid credentials"));
+  }
+
+  @Override
+  public Mono<Void> setEmailVerified(String keycloakId, boolean verified) {
+    return zeabayKeycloakClient.setEmailVerified(keycloakId, verified);
+  }
+
+  @Override
+  public Mono<AuthTokenResult> refreshToken(String refreshToken) {
+    return zeabayKeycloakClient
+        .refreshToken(refreshToken)
+        .map(r -> new AuthTokenResult(r.accessToken(), r.refreshToken(), r.expiresIn()))
+        .onErrorMap(
+            WebClientResponseException.class,
+            ex ->
+                new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid or expired refresh token"));
+  }
+
+  @Override
+  public Mono<Void> logout(String keycloakId) {
+    return zeabayKeycloakClient.logout(keycloakId);
   }
 }

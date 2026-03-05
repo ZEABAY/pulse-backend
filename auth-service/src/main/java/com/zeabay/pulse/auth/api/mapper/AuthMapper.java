@@ -21,5 +21,6 @@ public interface AuthMapper {
 
   AuthTokenApiResponse toTokenApiResponse(AuthTokenResult result);
 
+  @Mapping(target = "id", expression = "java(String.valueOf(user.getId()))")
   RegisterApiResponse toRegisterApiResponse(AuthUser user);
 }

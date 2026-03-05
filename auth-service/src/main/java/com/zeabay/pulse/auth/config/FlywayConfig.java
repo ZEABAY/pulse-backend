@@ -19,9 +19,9 @@ public class FlywayConfig {
       Flyway flyway =
           Flyway.configure()
               .dataSource(url, user, password)
+              .locations("classpath:db/migration")
               .baselineOnMigrate(true)
               .baselineVersion("0")
-              .locations("classpath:db/migration")
               .load();
 
       flyway.migrate();

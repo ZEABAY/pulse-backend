@@ -95,14 +95,24 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-pulse}
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-    command: start-dev
+      KC_HEALTH_ENABLED: "true"
+    command: ["start-dev", "--import-realm"]
     ports:
       - "9080:8080"
+      - "9090:9000"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - pulse_keycloak_data:/opt/keycloak/data
+      - ./keycloak/realm-pulse-import.json:/opt/keycloak/data/import/realm-pulse-import.json:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
     networks: [ pulse ]
 
   jaeger:
@@ -117,6 +127,12 @@ services:
       - ./jaeger/jaeger-config.yaml:/etc/jaeger/config.yaml:ro
     tmpfs:
       - /tmp
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:16686/ > /dev/null 2>&1 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
     networks: [ pulse ]
 

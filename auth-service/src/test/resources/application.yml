@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: auth-service
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ''
+  flyway:
+    enabled: false
+  kafka:
+    bootstrap-servers: localhost:9099
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/mock/certs
+
+keycloak:
+  auth-server-url: http://localhost:9999
+  realm: test
+  resource: test-client
+  credentials:
+    secret: test-secret
+  admin:
+    username: admin
+    password: admin
+
+zeabay:
+  outbox:
+    polling-interval-ms: 99999999
+
+logging:
+  level:
+    root: WARN
+    com.zeabay: WARN

@@ -11,4 +11,10 @@ public interface AuthService {
   Mono<AuthUser> registerUser(RegisterUserCommand command);
 
   Mono<AuthTokenResult> loginUser(LoginCommand command);
+
+  Mono<Void> verifyEmail(String token);
+
+  Mono<AuthTokenResult> refreshToken(String refreshToken);
+
+  Mono<Void> logout(String keycloakId);
 }

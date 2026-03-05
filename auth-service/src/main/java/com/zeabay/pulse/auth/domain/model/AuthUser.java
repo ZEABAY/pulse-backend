@@ -1,7 +1,6 @@
 package com.zeabay.pulse.auth.domain.model;
 
 import com.zeabay.common.r2dbc.BaseEntity;
-import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,9 +25,6 @@ public class AuthUser extends BaseEntity {
 
   @Column("username")
   private String username;
-
-  @Column("roles")
-  private Set<String> roles;
 
   @Builder.Default
   @Column("status")
