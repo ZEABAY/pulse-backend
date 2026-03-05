@@ -1,6 +1,12 @@
 {
   "realm": "pulse",
   "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "user",  "description": "Standard platform user" },
+      { "name": "admin", "description": "Platform administrator"  }
+    ]
+  },
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,

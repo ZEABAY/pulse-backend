@@ -17,13 +17,10 @@ import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
-import com.zeabay.pulse.auth.domain.model.AuthUserRole;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
 import com.zeabay.pulse.auth.domain.model.AuthVerificationToken;
 import com.zeabay.pulse.auth.domain.repository.AuthUserRepository;
-import com.zeabay.pulse.auth.domain.repository.AuthUserRoleRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthVerificationTokenRepository;
-import com.zeabay.pulse.auth.domain.repository.RoleRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -40,11 +37,9 @@ import reactor.util.function.Tuples;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-  private static final String DEFAULT_ROLE_CODE = "ROLE_USER";
+  private static final String DEFAULT_ROLE = "user";
 
   private final AuthUserRepository userRepository;
-  private final RoleRepository roleRepository;
-  private final AuthUserRoleRepository authUserRoleRepository;
   private final AuthVerificationTokenRepository verificationTokenRepository;
   private final IdentityProviderPort identityProviderPort;
   private final OutboxEventRepository outboxEventRepository;
@@ -94,21 +89,9 @@ public class AuthServiceImpl implements AuthService {
                   })
               .flatMap(
                   savedUser ->
-                      roleRepository
-                          .findByCode(DEFAULT_ROLE_CODE)
-                          .flatMap(
-                              role ->
-                                  authUserRoleRepository
-                                      .save(
-                                          AuthUserRole.builder()
-                                              .authUserId(savedUser.getId())
-                                              .roleId(role.getId())
-                                              .build())
-                                      .thenReturn(savedUser))
-                          .switchIfEmpty(
-                              Mono.error(
-                                  new IllegalStateException(
-                                      "Default role " + DEFAULT_ROLE_CODE + " not found"))))
+                      identityProviderPort
+                          .assignRole(savedUser.getKeycloakId(), DEFAULT_ROLE)
+                          .thenReturn(savedUser))
               .flatMap(
                   savedUser -> {
                     String rawToken = UUID.randomUUID().toString().replace("-", "");

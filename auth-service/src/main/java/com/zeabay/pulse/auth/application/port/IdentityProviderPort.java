@@ -9,6 +9,8 @@ public interface IdentityProviderPort {
 
   Mono<String> registerUser(RegisterUserCommand command);
 
+  Mono<Void> assignRole(String keycloakId, String roleName);
+
   Mono<AuthTokenResult> loginUser(LoginCommand command);
 
   Mono<Void> setEmailVerified(String keycloakId, boolean verified);

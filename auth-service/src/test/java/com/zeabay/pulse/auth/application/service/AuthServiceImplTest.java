@@ -14,14 +14,10 @@ import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
-import com.zeabay.pulse.auth.domain.model.AuthUserRole;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
 import com.zeabay.pulse.auth.domain.model.AuthVerificationToken;
-import com.zeabay.pulse.auth.domain.model.Role;
 import com.zeabay.pulse.auth.domain.repository.AuthUserRepository;
-import com.zeabay.pulse.auth.domain.repository.AuthUserRoleRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthVerificationTokenRepository;
-import com.zeabay.pulse.auth.domain.repository.RoleRepository;
 import java.time.Instant;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,8 +32,6 @@ import reactor.test.StepVerifier;
 class AuthServiceImplTest {
 
   @Mock AuthUserRepository userRepository;
-  @Mock RoleRepository roleRepository;
-  @Mock AuthUserRoleRepository authUserRoleRepository;
   @Mock AuthVerificationTokenRepository verificationTokenRepository;
   @Mock IdentityProviderPort identityProviderPort;
   @Mock OutboxEventRepository outboxEventRepository;
@@ -66,13 +60,11 @@ class AuthServiceImplTest {
     void success_savesUserAndReturnsIt() throws Exception {
       var command = new RegisterUserCommand("zeyneltest", "zeynel@test.com", "Pass1234!");
       var savedUser = activeUser();
-      var role = Role.builder().id(1L).code("ROLE_USER").build();
 
       when(userRepository.findByEmail("zeynel@test.com")).thenReturn(Mono.empty());
       when(identityProviderPort.registerUser(any())).thenReturn(Mono.just("kc-uuid"));
       when(userRepository.save(any())).thenReturn(Mono.just(savedUser));
-      when(roleRepository.findByCode("ROLE_USER")).thenReturn(Mono.just(role));
-      when(authUserRoleRepository.save(any())).thenReturn(Mono.just(new AuthUserRole()));
+      when(identityProviderPort.assignRole(any(), any())).thenReturn(Mono.empty());
       when(verificationTokenRepository.save(any()))
           .thenReturn(Mono.just(new AuthVerificationToken()));
       when(objectMapper.writeValueAsString(any())).thenReturn("{}");

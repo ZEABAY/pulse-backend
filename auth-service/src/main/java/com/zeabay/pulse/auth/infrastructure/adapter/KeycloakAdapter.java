@@ -35,6 +35,11 @@ public class KeycloakAdapter implements IdentityProviderPort {
   }
 
   @Override
+  public Mono<Void> assignRole(String keycloakId, String roleName) {
+    return zeabayKeycloakClient.assignRealmRole(keycloakId, roleName);
+  }
+
+  @Override
   public Mono<AuthTokenResult> loginUser(LoginCommand command) {
     return zeabayKeycloakClient
         .loginUser(
