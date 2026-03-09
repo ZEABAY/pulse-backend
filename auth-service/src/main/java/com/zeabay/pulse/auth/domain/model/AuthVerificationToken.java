@@ -18,8 +18,7 @@ import org.springframework.data.relational.core.mapping.Table;
 @Table("auth_verification_tokens")
 public class AuthVerificationToken {
 
-  @Id
-  private Long id;
+  @Id private Long id;
 
   @Column("user_id")
   private Long userId;

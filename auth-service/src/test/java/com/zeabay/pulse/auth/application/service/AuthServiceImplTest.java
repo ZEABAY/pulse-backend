@@ -2,17 +2,19 @@ package com.zeabay.pulse.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zeabay.common.api.exception.BusinessException;
 import com.zeabay.common.api.exception.ErrorCode;
-import com.zeabay.common.outbox.OutboxEvent;
-import com.zeabay.common.outbox.OutboxEventRepository;
+import com.zeabay.common.security.OtpGenerator;
+import com.zeabay.common.tsid.TsidIdGenerator;
 import com.zeabay.pulse.auth.application.dto.AuthTokenResult;
 import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
+import com.zeabay.pulse.auth.application.port.out.OutboxPort;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
 import com.zeabay.pulse.auth.domain.model.AuthVerificationToken;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -34,8 +37,9 @@ class AuthServiceImplTest {
   @Mock AuthUserRepository userRepository;
   @Mock AuthVerificationTokenRepository verificationTokenRepository;
   @Mock IdentityProviderPort identityProviderPort;
-  @Mock OutboxEventRepository outboxEventRepository;
-  @Mock ObjectMapper objectMapper;
+  @Mock OutboxPort outboxPort;
+  @Mock OtpGenerator otpGenerator;
+  @Mock TsidIdGenerator tsidIdGenerator;
 
   @InjectMocks AuthServiceImpl service;
 
@@ -67,8 +71,9 @@ class AuthServiceImplTest {
       when(identityProviderPort.assignRole(any(), any())).thenReturn(Mono.empty());
       when(verificationTokenRepository.save(any()))
           .thenReturn(Mono.just(new AuthVerificationToken()));
-      when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-      when(outboxEventRepository.save(any())).thenReturn(Mono.just(OutboxEvent.builder().build()));
+      when(otpGenerator.generate()).thenReturn("123456");
+      when(tsidIdGenerator.newId()).thenReturn("test-tsid-id");
+      when(outboxPort.saveEvent(any(), any(), any(), any(), any(), any())).thenReturn(Mono.empty());
 
       StepVerifier.create(service.registerUser(command))
           .assertNext(user -> assertThat(user.getEmail()).isEqualTo("zeynel@test.com"))
@@ -81,6 +86,7 @@ class AuthServiceImplTest {
 
       when(userRepository.findByEmail("zeynel@test.com")).thenReturn(Mono.just(activeUser()));
       // .then(identityProviderPort.registerUser(...)) evaluates argument eagerly — must be non-null
+      // even though it won't subscribe
       when(identityProviderPort.registerUser(any())).thenReturn(Mono.empty());
 
       StepVerifier.create(service.registerUser(command))
@@ -91,6 +97,45 @@ class AuthServiceImplTest {
                     .isEqualTo(ErrorCode.USER_ALREADY_EXISTS);
               })
           .verify();
+    }
+
+    @Test
+    void dbSaveFails_deletesKeycloakUserAndPropagatesError() {
+      var command = new RegisterUserCommand("zeyneltest", "zeynel@test.com", "Pass1234!");
+      var dbError = new RuntimeException("DB connection lost");
+
+      when(userRepository.findByEmail("zeynel@test.com")).thenReturn(Mono.empty());
+      when(identityProviderPort.registerUser(any())).thenReturn(Mono.just("kc-uuid"));
+      when(userRepository.save(any())).thenReturn(Mono.error(dbError));
+      when(identityProviderPort.deleteUser(eq("kc-uuid"))).thenReturn(Mono.empty());
+
+      StepVerifier.create(service.registerUser(command))
+          .expectErrorSatisfies(ex -> assertThat(ex).isEqualTo(dbError))
+          .verify();
+
+      verify(identityProviderPort).deleteUser("kc-uuid");
+    }
+
+    @Test
+    void dbSaveConstraintViolation_deletesKeycloakUserAndThrowsUserAlreadyExists() {
+      var command = new RegisterUserCommand("zeyneltest", "zeynel@test.com", "Pass1234!");
+
+      when(userRepository.findByEmail("zeynel@test.com")).thenReturn(Mono.empty());
+      when(identityProviderPort.registerUser(any())).thenReturn(Mono.just("kc-uuid"));
+      when(userRepository.save(any()))
+          .thenReturn(Mono.error(new DataIntegrityViolationException("duplicate key")));
+      when(identityProviderPort.deleteUser(eq("kc-uuid"))).thenReturn(Mono.empty());
+
+      StepVerifier.create(service.registerUser(command))
+          .expectErrorSatisfies(
+              ex -> {
+                assertThat(ex).isInstanceOf(BusinessException.class);
+                assertThat(((BusinessException) ex).getErrorCode())
+                    .isEqualTo(ErrorCode.USER_ALREADY_EXISTS);
+              })
+          .verify();
+
+      verify(identityProviderPort).deleteUser("kc-uuid");
     }
   }
 
@@ -167,7 +212,7 @@ class AuthServiceImplTest {
     void unknownToken_throwsNotFound() {
       when(verificationTokenRepository.findByToken("bad-token")).thenReturn(Mono.empty());
 
-      StepVerifier.create(service.verifyEmail("bad-token"))
+      StepVerifier.create(service.verifyEmail("zeynel@test.com", "bad-token"))
           .expectErrorSatisfies(
               ex -> {
                 assertThat(ex).isInstanceOf(BusinessException.class);
@@ -187,7 +232,7 @@ class AuthServiceImplTest {
 
       when(verificationTokenRepository.findByToken("expired-token")).thenReturn(Mono.just(expired));
 
-      StepVerifier.create(service.verifyEmail("expired-token"))
+      StepVerifier.create(service.verifyEmail("zeynel@test.com", "expired-token"))
           .expectErrorSatisfies(
               ex -> {
                 assertThat(ex).isInstanceOf(BusinessException.class);
@@ -210,13 +255,36 @@ class AuthServiceImplTest {
 
       when(verificationTokenRepository.findByToken("used-token")).thenReturn(Mono.just(used));
 
-      StepVerifier.create(service.verifyEmail("used-token"))
+      StepVerifier.create(service.verifyEmail("zeynel@test.com", "used-token"))
           .expectErrorSatisfies(
               ex -> {
                 assertThat(ex).isInstanceOf(BusinessException.class);
                 assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(ErrorCode.BAD_REQUEST);
                 assertThat(ex.getMessage()).contains("already been used");
+              })
+          .verify();
+    }
+
+    @Test
+    void wrongEmail_throwsNotFound() {
+      var validToken =
+          AuthVerificationToken.builder()
+              .token("123456")
+              .userId(100L)
+              .expiresAt(Instant.now().plusSeconds(3600))
+              .build();
+      var user = activeUser(); // email = "zeynel@test.com"
+
+      when(verificationTokenRepository.findByToken("123456")).thenReturn(Mono.just(validToken));
+      when(verificationTokenRepository.save(any())).thenReturn(Mono.just(validToken));
+      when(userRepository.findById(100L)).thenReturn(Mono.just(user));
+
+      StepVerifier.create(service.verifyEmail("wrong@email.com", "123456"))
+          .expectErrorSatisfies(
+              ex -> {
+                assertThat(ex).isInstanceOf(BusinessException.class);
+                assertThat(((BusinessException) ex).getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND);
               })
           .verify();
     }

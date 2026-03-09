@@ -50,11 +50,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.zeabay</groupId>
             <artifactId>zeabay-webflux</artifactId>
         </dependency>
@@ -67,6 +62,11 @@
         <dependency>
             <groupId>com.zeabay</groupId>
             <artifactId>zeabay-ops</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-core</artifactId>
         </dependency>
 
         <dependency>
@@ -105,11 +105,6 @@
             <artifactId>zeabay-keycloak</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.github.f4b6a3</groupId>
-            <artifactId>tsid-creator</artifactId>
-            <version>5.2.6</version>
-        </dependency>
 
         <dependency>
             <groupId>org.mapstruct</groupId>
@@ -194,6 +189,10 @@
                     <url>jdbc:postgresql://localhost:5432/pulse</url>
                     <user>pulse</user>
                     <password>pulse</password>
+                    <locations>
+                        <location>classpath:db/migration</location>
+                        <location>classpath:com/zeabay/common/outbox/db/migration</location>
+                    </locations>
                 </configuration>
             </plugin>
         </plugins>

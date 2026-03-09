@@ -40,6 +40,7 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
 
+        <jackson.version>2.21.0</jackson.version>
         <zeabay-common.version>1.0.0-SNAPSHOT</zeabay-common.version>
         <lombok.version>1.18.42</lombok.version>
 

@@ -200,7 +200,7 @@ class AuthControllerTest {
   }
 
   // ─────────────────────────────────────────────────────────────
-  //  GET /verify
+  //  POST /verify
   // ─────────────────────────────────────────────────────────────
 
   @Nested
@@ -208,11 +208,13 @@ class AuthControllerTest {
 
     @Test
     void validToken_returns200() {
-      when(authService.verifyEmail("valid-token")).thenReturn(Mono.empty());
+      when(authService.verifyEmail("zeynel@test.com", "123456")).thenReturn(Mono.empty());
 
       webClient
-          .get()
-          .uri("/api/v1/auth/verify?token=valid-token")
+          .post()
+          .uri("/api/v1/auth/verify")
+          .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+          .bodyValue("{\"email\":\"zeynel@test.com\",\"token\":\"123456\"}")
           .exchange()
           .expectStatus()
           .isOk()
@@ -225,13 +227,15 @@ class AuthControllerTest {
 
     @Test
     void unknownToken_returns404() {
-      when(authService.verifyEmail("bad-token"))
+      when(authService.verifyEmail("zeynel@test.com", "000000"))
           .thenReturn(
               Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid verification token")));
 
       webClient
-          .get()
-          .uri("/api/v1/auth/verify?token=bad-token")
+          .post()
+          .uri("/api/v1/auth/verify")
+          .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+          .bodyValue("{\"email\":\"zeynel@test.com\",\"token\":\"000000\"}")
           .exchange()
           .expectStatus()
           .isNotFound()
@@ -242,14 +246,16 @@ class AuthControllerTest {
 
     @Test
     void expiredToken_returns400() {
-      when(authService.verifyEmail("expired-token"))
+      when(authService.verifyEmail("zeynel@test.com", "111111"))
           .thenReturn(
               Mono.error(
                   new BusinessException(ErrorCode.BAD_REQUEST, "Verification token has expired")));
 
       webClient
-          .get()
-          .uri("/api/v1/auth/verify?token=expired-token")
+          .post()
+          .uri("/api/v1/auth/verify")
+          .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+          .bodyValue("{\"email\":\"zeynel@test.com\",\"token\":\"111111\"}")
           .exchange()
           .expectStatus()
           .isBadRequest()

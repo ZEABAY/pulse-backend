@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 import com.zeabay.common.api.exception.BusinessException;
 import com.zeabay.common.api.exception.ErrorCode;
 import com.zeabay.common.keycloak.client.ZeabayKeycloakClient;
-import com.zeabay.common.keycloak.dto.KeycloakTokenResponse;
+import com.zeabay.common.keycloak.dto.ZeabayTokenResponse;
 import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +27,7 @@ class KeycloakAdapterTest {
   @Test
   void loginUser_success_mapsToAuthTokenResult() {
     when(keycloakClient.loginUser(any()))
-        .thenReturn(Mono.just(new KeycloakTokenResponse("access.token", "refresh.token", 300)));
+        .thenReturn(Mono.just(new ZeabayTokenResponse("access.token", "refresh.token", 300)));
 
     StepVerifier.create(adapter.loginUser(new LoginCommand("user", "pass")))
         .assertNext(

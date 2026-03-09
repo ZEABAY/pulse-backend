@@ -18,4 +18,6 @@ public interface IdentityProviderPort {
   Mono<AuthTokenResult> refreshToken(String refreshToken);
 
   Mono<Void> logout(String keycloakId);
+
+  Mono<Void> deleteUser(String keycloakId);
 }

@@ -8,6 +8,7 @@ import com.zeabay.pulse.auth.api.dto.LoginApiRequest;
 import com.zeabay.pulse.auth.api.dto.RefreshTokenApiRequest;
 import com.zeabay.pulse.auth.api.dto.RegisterApiRequest;
 import com.zeabay.pulse.auth.api.dto.RegisterApiResponse;
+import com.zeabay.pulse.auth.api.dto.VerifyEmailApiRequest;
 import com.zeabay.pulse.auth.api.mapper.AuthMapper;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +22,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @Loggable
@@ -82,9 +87,12 @@ public class AuthController {
     @ApiResponse(responseCode = "400", description = "Token expired or already used"),
     @ApiResponse(responseCode = "404", description = "Invalid token")
   })
-  @GetMapping("/verify")
-  public Mono<ZeabayApiResponse<String>> verifyEmail(@RequestParam String token) {
-    return authService.verifyEmail(token).then(ZeabayResponses.ok("Email verified successfully"));
+  @PostMapping("/verify")
+  public Mono<ZeabayApiResponse<String>> verifyEmail(
+      @Valid @RequestBody VerifyEmailApiRequest request) {
+    return authService
+        .verifyEmail(request.email(), request.token())
+        .then(ZeabayResponses.ok("Email verified successfully"));
   }
 
   @Operation(

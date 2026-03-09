@@ -48,7 +48,7 @@ Bu ADR, tüm servisler için geçerli olan temel mimari kararları ve standartla
 
 **Blocking IO yasak:** JPA/Hibernate kullanılmaz. Tüm DB erişimi R2DBC üzerinden reaktif olacaktır.
 
-**Flyway istisnası:** Flyway JDBC gerektirir; R2DBC bununla uyumsuzdur. Her serviste Spring'in otomatik Flyway konfigürasyonu devre dışı bırakılır (`spring.flyway.enabled=false`) ve bir `ApplicationRunner` bean'i JDBC `DataSource` ile Flyway'i programatik olarak çalıştırır.
+**Flyway istisnası:** Flyway JDBC gerektirir; R2DBC bununla uyumsuzdur. `zeabay-outbox` modülü, `spring.flyway.enabled=true` olduğunda Flyway'i çalıştırır: önce `outbox_events` tablosunu oluşturur, sonra JDBC URL'ini `spring.r2dbc.url`'den türetip (`r2dbc:` → `jdbc:`) Flyway migrate çalıştırır (`baselineOnMigrate` ile). Outbox kullanmayan servisler kendi Flyway konfigürasyonunu yapar.
 
 ---
 
@@ -63,16 +63,16 @@ Servisler arası tekrar eden kod ve standartlar `zeabay-common` git submodule'ü
 | Modül | Sorumluluk |
 |---|---|
 | `zeabay-bom` | BOM — tüm modül versiyonlarını tek noktadan yönetir |
-| `zeabay-core` | TSID generator, `ErrorCode`, `BusinessException`, `ZeabayConstants` |
+| `zeabay-core` | TSID generator (`TsidIdGenerator`), `ErrorCode`, `BusinessException`, `ZeabayConstants` |
 | `zeabay-webflux` | CORS, global exception handler, TraceId filtresi, MDC hook, WebClient, `ZeabayApiResponse` |
 | `zeabay-openapi` | Swagger UI + JWT Bearer kutusu otomatik konfigürasyonu |
 | `zeabay-ops` | Actuator/Prometheus varsayılanları (`EnvironmentPostProcessor`) |
 | `zeabay-logging` | `@Loggable` AOP — Mono/Flux farkında; giriş/çıkış/hata loglama |
-| `zeabay-r2dbc` | `BaseEntity` (TSID + audit alanları), `BeforeConvertCallback`, `@EnableR2dbcAuditing` |
+| `zeabay-r2dbc` | `BaseEntity` (TSID + audit alanları), `BeforeConvertCallback`, `@EnableR2dbcAuditing`. BaseEntity için `zeabayTsidBeforeConvertCallback`; BaseEntity dışındaki entity'ler (örn. `AuthVerificationToken`) için `zeabayGenericTsidBeforeConvertCallback` ile `@Id Long` alanına TSID atanır |
 | `zeabay-security` | `SecurityWebFilterChain` varsayılanı, `ReactiveAuditorAware`, güvenlik özellikleri |
 | `zeabay-validation` | `ZeabayValidator.validate()` programatik Bean Validation |
 | `zeabay-kafka` | `KafkaTemplate`, producer/consumer factory, `BaseEvent`, domain event sınıfları |
-| `zeabay-outbox` | Transactional Outbox pattern: `OutboxEvent`, scheduled publisher, tablo init |
+| `zeabay-outbox` | Transactional Outbox pattern: `OutboxEvent`, `OutboxPublisher`, `V0__outbox_events.sql` ile tablo init. `spring.flyway.enabled=true` ise Flyway migration ile, değilse ConnectionFactoryInitializer ile oluşturulur |
 | `zeabay-keycloak` | Keycloak Admin SDK wrapper + token endpoint WebClient |
 
 **Yayın stratejisi:** SNAPSHOT sürümler local `~/.m2` veya GitHub Packages. Release sürümler Maven Central'a (`com.zeabay` namespace).
@@ -86,7 +86,7 @@ Servisler arası tekrar eden kod ve standartlar `zeabay-common` git submodule'ü
 
 **Neden String API'de:** JavaScript `Number` tipi maksimum `2^53 - 1 ≈ 9×10^15` tam sayıyı güvenli temsil edebilir. TSID değerleri 2026 itibarıyla `~8×10^17` mertebesindedir — doğrudan JSON `number` olarak gönderilirse frontend'de son haneler bozulur.
 
-**Generator:** `TsidCreator.getTsid().toLong()` (DB için), `.toString().toLowerCase()` (API/event için). `zeabay-core` modülünde `TsidIdGenerator` bean'i olarak sağlanır. `BaseEntity.id` alanı `BeforeConvertCallback` ile otomatik atanır.
+**Generator:** `TsidIdGenerator.newLongId()` (DB için), `TsidIdGenerator.newId()` veya `TsidCreator.getTsid().toString().toLowerCase()` (API/event için). `zeabay-r2dbc` modülünde `BeforeConvertCallback` ile `BaseEntity` ve uyumlu entity'lere otomatik TSID atanır.
 
 ---
 
@@ -128,18 +128,41 @@ Hata yanıtlarında `error` alanı zorunlu alanlar içerir:
 - `timestamp`
 - `validationErrors` — alan bazlı validasyon hataları (varsa)
 
+**ErrorCode → HTTP durum eşlemesi (`ZeabayGlobalExceptionHandler`):**
+
+| ErrorCode | HTTP |
+|---|---|
+| NOT_FOUND | 404 |
+| USER_ALREADY_EXISTS | 409 |
+| UNAUTHORIZED | 401 |
+| FORBIDDEN | 403 |
+| INTERNAL_ERROR | 500 |
+| VALIDATION_ERROR, BAD_REQUEST, diğerleri | 400 |
+
 ---
 
 ### 2.7 IAM: Keycloak
 
 Kullanıcı kimlik yönetimi Keycloak üzerinden yapılır. Auth-service kendi credential tablosu tutmaz; Keycloak master kaynaktır.
 
-- Kayıt: Keycloak Admin SDK ile kullanıcı oluşturulur → `auth_users` tablosuna `keycloak_id` + `status` kaydı yazılır
-- Login/Refresh: Keycloak token endpoint'ine proxy
-- Email doğrulama: Keycloak'ta `email_verified=true` güncellenir
-- Logout: Keycloak Admin SDK ile kullanıcının tüm session'ları sonlandırılır
+**Kayıt akışı:**
+- Keycloak Admin SDK ile kullanıcı oluşturulur
+- `auth_users` tablosuna `keycloak_id` + `status` kaydı yazılır
+- Kayıt sonrası varsayılan realm rolü (`user`) Keycloak Admin API ile atanır
 
-`pulse-backend-client` service account'una `realm-management` üzerinden `manage-users` ve `view-users` rolleri verilir (bkz. `infra/local/keycloak/setup-keycloak.sh`).
+**Login/Refresh:** Keycloak token endpoint'ine proxy.
+
+**Email doğrulama:** Keycloak'ta `email_verified=true` güncellenir; `auth_users.status` → `ACTIVE`.
+
+**Logout:** Keycloak Admin SDK ile kullanıcının tüm session'ları sonlandırılır.
+
+**RBAC — Keycloak-native:**
+- Rol tanımları Keycloak realm'da (`realm-pulse-import.json`): `user`, `admin`
+- Lokal rol tabloları yok; Keycloak tek kaynak (single source of truth)
+- JWT claim `realm_access.roles` → Spring Security authorities (`ROLE_USER`, `ROLE_ADMIN`)
+- Servisler `@PreAuthorize("hasRole('USER')")` ile metod seviyesinde yetkilendirme yapabilir
+
+**Servis hesabı:** `pulse-backend-client` service account'una `realm-management` üzerinden `manage-users` ve `view-users` rolleri verilir. Kurulum: `infra/local/keycloak/setup-keycloak.sh` (içeride `assign-service-account-roles.sh` çağrılır).
 
 ---
 
@@ -149,8 +172,10 @@ Kullanıcı kimlik yönetimi Keycloak üzerinden yapılır. Auth-service kendi c
 
 **Akış:**
 1. Servis, DB'ye iş verisi + `outbox_events` tablosuna event kaydını aynı transaction'da yazar
-2. `OutboxPublisher` (scheduled, default 1s polling) pending event'leri Kafka'ya gönderir
+2. `OutboxPublisher` (scheduled, default `zeabay.outbox.polling-interval-ms` ms) pending event'leri Kafka'ya gönderir
 3. Başarı → `status=PUBLISHED`, hata → `retry_count++`, max retry'da `status=FAILED`
+
+**Tablo yönetimi:** `outbox_events` tablosu `zeabay-outbox` modülü tarafından `V0__outbox_events.sql` ile oluşturulur (Flyway açıkken migration, kapalıyken ConnectionFactoryInitializer). Servisler kendi Flyway migration'larında bu tabloyu tanımlamaz.
 
 **Kullanılan event'ler (auth-service):**
 
@@ -169,12 +194,14 @@ Kullanıcı kimlik yönetimi Keycloak üzerinden yapılır. Auth-service kendi c
 ### 2.9 Güvenlik Varsayılanları
 
 - `actuator/**` → public
-- `v3/api-docs/**`, `swagger-ui/**` → public
+- `v3/api-docs/**`, `swagger-ui/**`, `swagger-ui.html`, `webjars/**` → public
 - Auth endpoint'leri (`/api/v1/auth/register`, `/login`, `/verify`, `/refresh`) → public
 - `/api/v1/auth/logout` → Bearer JWT gerektirir
 - Tüm diğer endpoint'ler → Bearer JWT gerektirir
 
 JWT doğrulama: Keycloak JWKS endpoint'inden (`{keycloak.auth-server-url}/realms/{realm}/protocol/openid-connect/certs`) Spring Security OAuth2 Resource Server ile yapılır.
+
+Rol çıkarımı: JWT `realm_access.roles` claim'i `ReactiveJwtAuthenticationConverter` ile `SimpleGrantedAuthority` olarak map edilir (`ROLE_` prefix ile).
 
 ---
 
@@ -184,6 +211,7 @@ JWT doğrulama: Keycloak JWKS endpoint'inden (`{keycloak.auth-server-url}/realms
 - Her mikroservis bağımlılıklarını ekleyerek trace/log/hata/ops standartlarını sıfır konfigürasyonla kazanır
 - TSID sayesinde DB insert sıralaması ve index performansı UUID'ye göre üstündür
 - Outbox garantisi: uygulama çökmüş olsa bile event kaybı yoktur
+- Keycloak-native RBAC ile rol yönetimi tek merkezde; lokal tablo senkronizasyonu gerekmez
 
 ### Dikkat Edilmesi Gerekenler
 - `zeabay-common` değişiklikleri tüm servisleri etkiler; semantic versioning ve geriye uyumluluk zorunludur

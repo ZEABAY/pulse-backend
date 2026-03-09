@@ -22,7 +22,6 @@ AuthController          ← API layer  (api/rest)
 AuthServiceImpl         ← Application layer (application/service)
      │
      ├── AuthUserRepository          ← R2DBC (domain/repository)
-     ├── RoleRepository              ← R2DBC
      ├── AuthVerificationTokenRepository ← R2DBC
      ├── OutboxEventRepository       ← zeabay-outbox
      └── IdentityProviderPort        ← Outbound port (application/port)
@@ -42,6 +41,7 @@ AuthServiceImpl         ← Application layer (application/service)
 - Domain events are published via the **Transactional Outbox** pattern (zeabay-outbox), never directly to Kafka.
 - Flyway runs on a separate blocking JDBC connection; the rest of the stack is fully non-blocking.
 - IDs are **TSID** (64-bit, time-sorted) in the database and **String** at the API level (JavaScript `Number` safe).
+- Jackson `ObjectMapper` (JavaTimeModule, ISO-8601 dates) is provided by `zeabay-core`.
 
 ---
 
@@ -219,9 +219,9 @@ Invalidates all sessions for the authenticated user in Keycloak.
 
 Domain helpers: `isExpired()`, `isUsed()`.
 
-### `Role` + `AuthUserRole` (tables: `roles`, `auth_user_roles`)
+### RBAC (Keycloak-native)
 
-Seeded roles: `ROLE_USER`. Junction table maps users to roles.
+Roles (`user`, `admin`) are managed in Keycloak realm. No local role tables.
 
 ---
 
@@ -260,7 +260,7 @@ spring:
     username: ${POSTGRES_USER:pulse}
     password: ${POSTGRES_PASSWORD:pulse}
   flyway:
-    enabled: false          # Flyway is managed manually via FlywayConfig (JDBC)
+    enabled: true
   kafka:
     bootstrap-servers: localhost:9092
   security:

@@ -12,7 +12,7 @@ public interface AuthService {
 
   Mono<AuthTokenResult> loginUser(LoginCommand command);
 
-  Mono<Void> verifyEmail(String token);
+  Mono<Void> verifyEmail(String email, String token);
 
   Mono<AuthTokenResult> refreshToken(String refreshToken);
 

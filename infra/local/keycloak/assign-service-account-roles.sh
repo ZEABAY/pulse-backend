@@ -88,11 +88,10 @@ else
   exit 1
 fi
 
-# ── User Profile: firstName / lastName NOT required ──────────────────────────
-# Keycloak 26 declarative user profile requires firstName+lastName by default.
-# In Pulse, profile data belongs to user-profile-service, not auth-service.
-# We remove the 'required' constraint so registration only needs username+email+password.
-echo "Removing required constraint from firstName and lastName in user profile..."
+# ── User Profile: firstName / lastName opsiyonel ─────────────────────────────
+# Keycloak 26 varsayılanları firstName+lastName zorunlu. Profil verisi
+# user-profile-service'te tutulacağı için kayıt sadece username+email+password ile yapılır.
+echo "Making firstName and lastName optional in user profile..."
 CURRENT_PROFILE=$(curl -sS "$KEYCLOAK_URL/admin/realms/$REALM/users/profile" \
   -H "Authorization: Bearer $TOKEN")
 

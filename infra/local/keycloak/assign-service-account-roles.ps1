@@ -83,3 +83,22 @@ try {
 } catch {
     Write-Error "Failed to assign roles. HTTP $($_.Exception.Response.StatusCode.Value__)"
 }
+
+# User Profile: firstName / lastName opsiyonel (profil verisi user-profile-service'te tutulacak)
+Write-Host "Making firstName and lastName optional in user profile..."
+try {
+    $profile = Invoke-RestMethod -Method Get -Uri "$KeycloakUrl/admin/realms/$REALM/users/profile" -Headers $headers
+    foreach ($attr in $profile.attributes) {
+        if ($attr.name -in @("firstName", "lastName") -and $attr.PSObject.Properties["required"]) {
+            $attr.PSObject.Properties.Remove("required")
+        }
+    }
+    $profileJson = $profile | ConvertTo-Json -Depth 20 -Compress
+    Invoke-RestMethod -Method Put -Uri "$KeycloakUrl/admin/realms/$REALM/users/profile" `
+        -Headers $headers `
+        -ContentType "application/json" `
+        -Body $profileJson | Out-Null
+    Write-Host "User profile updated: firstName and lastName are now optional."
+} catch {
+    Write-Warning "Failed to update user profile. $($_.Exception.Message)"
+}
