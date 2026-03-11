@@ -16,6 +16,7 @@ import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
+import com.zeabay.pulse.auth.domain.model.AuthUserTestFixtures;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,12 +47,8 @@ class AuthControllerTest {
   @MockitoBean AuthMapper authMapper;
 
   private AuthUser activeUser() {
-    var user = new AuthUser();
-    user.setId(817408902493679116L);
-    user.setUsername("zeyneltest");
-    user.setEmail("zeynel@zeabay.com");
-    user.setStatus(AuthUserStatus.ACTIVE);
-    return user;
+    return AuthUserTestFixtures.withId(
+        817408902493679116L, null, "zeyneltest", "zeynel@zeabay.com", AuthUserStatus.ACTIVE);
   }
 
   // ─────────────────────────────────────────────────────────────

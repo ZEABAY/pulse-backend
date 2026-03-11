@@ -14,7 +14,7 @@ Yerel geliştirme ve test için Docker Compose altyapısı.
 ## Hızlı Başlangıç
 
 ```bash
-# Proje kökünden
+# pulse-backend dizininden
 cd infra/local
 docker compose up -d
 ```
@@ -31,7 +31,7 @@ Keycloak ilk açılışta `realm-pulse-import.json` ile realm'i import eder. Ard
 
 | Komut | Açıklama |
 |-------|----------|
-| `docker compose -f infra/local/docker-compose.yml up -d` | Servisleri başlat (proje kökünden) |
+| `docker compose -f infra/local/docker-compose.yml up -d` | Servisleri başlat (pulse-backend dizininden) |
 | `docker compose -f infra/local/docker-compose.yml down` | Servisleri durdur |
 | `docker compose -f infra/local/docker-compose.yml down -v` | Servisleri durdur + volume'ları sil |
 | `./infra/local/reset-local.sh` | Sıfırdan başlat (down -v, up, Keycloak setup) |
@@ -42,7 +42,7 @@ Keycloak ilk açılışta `realm-pulse-import.json` ile realm'i import eder. Ard
 
 | Servis | Port | Açıklama |
 |--------|------|----------|
-| PostgreSQL | 5432 | `pulse`, `keycloak` veritabanları |
+| PostgreSQL | 5432 | `pulse` (auth, mail schema) + `keycloak` |
 | Redis | 6379 | Cache |
 | Kafka | 9092 | Mesaj kuyruğu (KRaft) |
 | Keycloak | 9080 | IAM (Admin: http://localhost:9080/admin) |
@@ -54,10 +54,21 @@ Keycloak ilk açılışta `realm-pulse-import.json` ile realm'i import eder. Ard
 
 ## Ortam Değişkenleri
 
-`infra/local/.env.example` dosyasını `.env` olarak kopyalayıp düzenleyebilirsiniz:
+**İki ayrı `.env` kullanılır:**
+
+| Dosya | Kullanım |
+|-------|----------|
+| `infra/local/.env` | Docker Compose (Postgres, Redis, Kafka, Keycloak) |
+| `pulse-backend/.env` | Uygulamalar (auth-service, mail-service — MAIL_* vb.) |
 
 ```bash
+# pulse-backend dizininden çalıştırın
+
+# Infra için (docker compose çalıştırmadan önce)
 cp infra/local/.env.example infra/local/.env
+
+# Uygulamalar için
+cp .env.example .env
 ```
 
 ---

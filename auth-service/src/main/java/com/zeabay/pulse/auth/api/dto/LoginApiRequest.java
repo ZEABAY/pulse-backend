@@ -12,6 +12,7 @@ public record LoginApiRequest(
         String password) {
 
   @Override
+  // TODO @notnull ekle
   public String toString() {
     return "LoginApiRequest[username=" + username + ", password=***]";
   }

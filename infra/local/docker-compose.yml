@@ -14,7 +14,7 @@
 # - tracing/logging backends with retention policies (e.g., Jaeger with persistent storage, not memory)
 # -------------------------------------------------------------------------------------------------
 
-name: pulse-local
+name: pulse
 
 services:
   postgres:
@@ -29,7 +29,7 @@ services:
     volumes:
       - pulse_postgres_data:/var/lib/postgresql/data
       - ./postgres/init-multiple-databases.sql:/docker-entrypoint-initdb.d/init-multiple-databases.sql
-      - ./postgres/init-pulse-schema.sql:/docker-entrypoint-initdb.d/init-pulse-schema.sql
+      - ./postgres/init-pulse-schemas.sql:/docker-entrypoint-initdb.d/init-pulse-schemas.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulse} -d ${POSTGRES_DB:-pulse}" ]
       interval: 5s
@@ -85,6 +85,24 @@ services:
       retries: 30
     restart: unless-stopped
     networks: [ pulse ]
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    container_name: pulse-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./kafka/create-topics.sh:/create-topics.sh:ro
+    tmpfs:
+      - /var/lib/kafka/data
+      - /mnt/shared/config
+      - /etc/kafka/secrets
+    command: ["bash", "/create-topics.sh"]
+    environment:
+      KAFKA_BOOTSTRAP: "kafka:29092"
+    networks: [ pulse ]
+    restart: "no"
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.3
@@ -152,6 +170,33 @@ services:
     restart: unless-stopped
     networks: [ pulse ]
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: pulse-kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pulse
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ pulse ]
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: pulse-redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - pulse_redis_insight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ pulse ]
+
 volumes:
   pulse_postgres_data:
     name: pulse_postgres_data
@@ -163,15 +208,16 @@ volumes:
     name: pulse_kafka_config
   pulse_kafka_secrets:
     name: pulse_kafka_secrets
-  pulse_grafana_data:
-    name: pulse_grafana_data
   pulse_keycloak_data:
     name: pulse_keycloak_data
-  pulse_jaeger_data:
-    name: pulse_jaeger_data
+  pulse_grafana_data:
+    name: pulse_grafana_data
+  pulse_redis_insight_data:
+    name: pulse_redis_insight_data
 
 networks:
   pulse:
+    name: pulse_network
     driver: bridge
 
 

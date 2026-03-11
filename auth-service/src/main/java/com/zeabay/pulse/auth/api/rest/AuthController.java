@@ -1,5 +1,7 @@
 package com.zeabay.pulse.auth.api.rest;
 
+import com.zeabay.common.api.exception.BusinessException;
+import com.zeabay.common.api.exception.ErrorCode;
 import com.zeabay.common.api.model.ZeabayApiResponse;
 import com.zeabay.common.logging.Loggable;
 import com.zeabay.common.web.ZeabayResponses;
@@ -12,6 +14,7 @@ import com.zeabay.pulse.auth.api.dto.VerifyEmailApiRequest;
 import com.zeabay.pulse.auth.api.mapper.AuthMapper;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -121,7 +124,11 @@ public class AuthController {
   })
   @PostMapping("/logout")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public Mono<Void> logout(Mono<Authentication> auth) {
-    return auth.flatMap(authentication -> authService.logout(authentication.getName()));
+  @SecurityRequirement(name = "bearerAuth") // Swagger için
+  public Mono<Void> logout(@Parameter(hidden = true) Mono<Authentication> auth) {
+    return auth.filter(Authentication::isAuthenticated)
+        .switchIfEmpty(
+            Mono.error(new BusinessException(ErrorCode.UNAUTHORIZED, "Not authenticated")))
+        .flatMap(authentication -> authService.logout(authentication.getName()));
   }
 }

@@ -33,27 +33,41 @@ public class OutboxAdapter implements OutboxPort {
       Long aggregateId,
       Object payload,
       String traceId) {
+    return serializePayload(payload, eventType)
+        .map(json -> buildOutboxEvent(eventType, topic, aggregateType, aggregateId, json, traceId))
+        .flatMap(repository::save)
+        .then();
+  }
 
-    String json;
+  /**
+   * Serializes payload to JSON. Returns {@code Mono.error} on failure — critical for transaction
+   * rollback when used inside {@code @Transactional} (e.g. registerUser).
+   */
+  private Mono<String> serializePayload(Object payload, String eventType) {
     try {
-      json = objectMapper.writeValueAsString(payload);
+      return Mono.just(objectMapper.writeValueAsString(payload));
     } catch (JsonProcessingException e) {
       log.error("Failed to serialize outbox event [eventType={}]: {}", eventType, e.getMessage());
       return Mono.error(new RuntimeException("Failed to serialize outbox event: " + eventType, e));
     }
+  }
 
-    OutboxEvent event =
-        OutboxEvent.builder()
-            .eventType(eventType)
-            .topic(topic)
-            .aggregateType(aggregateType)
-            .aggregateId(aggregateId)
-            .payload(json)
-            .traceId(traceId)
-            .status(OutboxEvent.Status.PENDING)
-            .retryCount(0)
-            .build();
-
-    return repository.save(event).then();
+  private OutboxEvent buildOutboxEvent(
+      String eventType,
+      String topic,
+      String aggregateType,
+      Long aggregateId,
+      String jsonPayload,
+      String traceId) {
+    return OutboxEvent.builder()
+        .eventType(eventType)
+        .topic(topic)
+        .aggregateType(aggregateType)
+        .aggregateId(aggregateId)
+        .payload(jsonPayload)
+        .traceId(traceId)
+        .status(OutboxEvent.Status.PENDING)
+        .retryCount(0)
+        .build();
   }
 }

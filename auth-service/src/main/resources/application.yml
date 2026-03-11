@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8082
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
   main:
     web-application-type: reactive
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/pulse
+    url: r2dbc:postgresql://localhost:5432/pulse?schema=auth
     username: ${POSTGRES_USER:pulse}
     password: ${POSTGRES_PASSWORD:pulse}
   flyway:
@@ -37,28 +37,19 @@ keycloak:
     username: ${KEYCLOAK_ADMIN_USER:admin}
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
-# Log format
+# Log format — tablo oluşturma (Flyway) logları INFO'da kalır, diğer gürültü azaltıldı
 logging:
   pattern:
     level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
   level:
     root: INFO
-    # 1. Kendi Projenin Logları:
-    com.zeabay: DEBUG
-
-    # 2. Keycloak ve Güvenlik Akışları (Yetkilendirme hatalarını bulmak için kritik):
-    org.springframework.security: DEBUG
-
-    # 3. WebFlux HTTP İstek/Yanıt Akışları:
-    org.springframework.web.reactive: DEBUG
-
-    # 4. R2DBC ve PostgreSQL Sorguları:
-    org.springframework.r2dbc: DEBUG
-    io.r2dbc.postgresql.QUERY: DEBUG # Çalışan SQL sorgularını gösterir
-    io.r2dbc.postgresql.PARAM: DEBUG # SQL sorgularına giden parametreleri gösterir
-
-    # 5. Kafka Producer Detayları (Çok gürültü yaparsa INFO'ya veya WARN'a çekebilirsin):
-    org.apache.kafka.clients.producer: DEBUG
+    com.zeabay: INFO
+    org.flywaydb: INFO
+    org.springframework.security: WARN
+    org.springframework.web.reactive: WARN
+    org.springframework.r2dbc: WARN
+    io.r2dbc.postgresql: WARN
+    org.apache.kafka: WARN
 
 # Observability Configurations
 management:

@@ -43,6 +43,7 @@
         <jackson.version>2.21.0</jackson.version>
         <zeabay-common.version>1.0.0-SNAPSHOT</zeabay-common.version>
         <lombok.version>1.18.42</lombok.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
 
         <!-- quality gate -->
         <spotless.version>3.2.1</spotless.version>
@@ -62,6 +63,7 @@
     <modules>
         <module>zeabay-common</module>
         <module>auth-service</module>
+        <module>mail-service</module>
     </modules>
 
     <dependencyManagement>
@@ -129,7 +131,7 @@
                             <path>
                                 <groupId>org.mapstruct</groupId>
                                 <artifactId>mapstruct-processor</artifactId>
-                                <version>1.5.5.Final</version>
+                                <version>${mapstruct.version}</version>
                             </path>
                         </annotationProcessorPaths>
                     </configuration>

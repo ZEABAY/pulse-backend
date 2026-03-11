@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.zeabay.common.api.exception.BusinessException;
 import com.zeabay.common.api.exception.ErrorCode;
 import com.zeabay.common.security.OtpGenerator;
-import com.zeabay.common.tsid.TsidIdGenerator;
+import com.zeabay.common.tsid.TsidGenerator;
 import com.zeabay.pulse.auth.application.dto.AuthTokenResult;
 import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
@@ -17,6 +17,7 @@ import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import com.zeabay.pulse.auth.application.port.out.OutboxPort;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
+import com.zeabay.pulse.auth.domain.model.AuthUserTestFixtures;
 import com.zeabay.pulse.auth.domain.model.AuthVerificationToken;
 import com.zeabay.pulse.auth.domain.repository.AuthUserRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthVerificationTokenRepository;
@@ -39,18 +40,13 @@ class AuthServiceImplTest {
   @Mock IdentityProviderPort identityProviderPort;
   @Mock OutboxPort outboxPort;
   @Mock OtpGenerator otpGenerator;
-  @Mock TsidIdGenerator tsidIdGenerator;
+  @Mock TsidGenerator tsidGenerator;
 
   @InjectMocks AuthServiceImpl service;
 
   private AuthUser activeUser() {
-    var user = new AuthUser();
-    user.setId(100L);
-    user.setKeycloakId("kc-uuid");
-    user.setUsername("zeyneltest");
-    user.setEmail("zeynel@test.com");
-    user.setStatus(AuthUserStatus.ACTIVE);
-    return user;
+    return AuthUserTestFixtures.withId(
+        100L, "kc-uuid", "zeyneltest", "zeynel@test.com", AuthUserStatus.ACTIVE);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -72,7 +68,7 @@ class AuthServiceImplTest {
       when(verificationTokenRepository.save(any()))
           .thenReturn(Mono.just(new AuthVerificationToken()));
       when(otpGenerator.generate()).thenReturn("123456");
-      when(tsidIdGenerator.newId()).thenReturn("test-tsid-id");
+      when(tsidGenerator.newId()).thenReturn("test-tsid-id");
       when(outboxPort.saveEvent(any(), any(), any(), any(), any(), any())).thenReturn(Mono.empty());
 
       StepVerifier.create(service.registerUser(command))
@@ -167,9 +163,9 @@ class AuthServiceImplTest {
     @Test
     void pendingVerificationUser_throwsUnauthorized() {
       var command = new LoginCommand("zeyneltest", "Pass1234!");
-      var pendingUser = new AuthUser();
-      pendingUser.setId(100L);
-      pendingUser.setStatus(AuthUserStatus.PENDING_VERIFICATION);
+      var pendingUser =
+          AuthUserTestFixtures.withId(
+              100L, null, "zeyneltest", "zeynel@test.com", AuthUserStatus.PENDING_VERIFICATION);
 
       when(userRepository.findByUsername("zeyneltest")).thenReturn(Mono.just(pendingUser));
       // switchIfEmpty evaluates argument eagerly — must be non-null even though it won't subscribe
@@ -261,7 +257,7 @@ class AuthServiceImplTest {
                 assertThat(ex).isInstanceOf(BusinessException.class);
                 assertThat(((BusinessException) ex).getErrorCode())
                     .isEqualTo(ErrorCode.BAD_REQUEST);
-                assertThat(ex.getMessage()).contains("already been used");
+                assertThat(ex.getMessage()).contains("used");
               })
           .verify();
     }

@@ -63,7 +63,7 @@ Servisler arası tekrar eden kod ve standartlar `zeabay-common` git submodule'ü
 | Modül | Sorumluluk |
 |---|---|
 | `zeabay-bom` | BOM — tüm modül versiyonlarını tek noktadan yönetir |
-| `zeabay-core` | TSID generator (`TsidIdGenerator`), `ErrorCode`, `BusinessException`, `ZeabayConstants` |
+| `zeabay-core` | TSID generator (`TsidGenerator`), `ErrorCode`, `BusinessException`, `ZeabayConstants` |
 | `zeabay-webflux` | CORS, global exception handler, TraceId filtresi, MDC hook, WebClient, `ZeabayApiResponse` |
 | `zeabay-openapi` | Swagger UI + JWT Bearer kutusu otomatik konfigürasyonu |
 | `zeabay-ops` | Actuator/Prometheus varsayılanları (`EnvironmentPostProcessor`) |
@@ -86,7 +86,7 @@ Servisler arası tekrar eden kod ve standartlar `zeabay-common` git submodule'ü
 
 **Neden String API'de:** JavaScript `Number` tipi maksimum `2^53 - 1 ≈ 9×10^15` tam sayıyı güvenli temsil edebilir. TSID değerleri 2026 itibarıyla `~8×10^17` mertebesindedir — doğrudan JSON `number` olarak gönderilirse frontend'de son haneler bozulur.
 
-**Generator:** `TsidIdGenerator.newLongId()` (DB için), `TsidIdGenerator.newId()` veya `TsidCreator.getTsid().toString().toLowerCase()` (API/event için). `zeabay-r2dbc` modülünde `BeforeConvertCallback` ile `BaseEntity` ve uyumlu entity'lere otomatik TSID atanır.
+**Generator:** `TsidGenerator.newLongId()` (DB için), `TsidGenerator.newId()` veya `TsidCreator.getTsid().toString().toLowerCase()` (API/event için). `zeabay-r2dbc` modülünde `BeforeConvertCallback` ile `BaseEntity` ve uyumlu entity'lere otomatik TSID atanır.
 
 ---
 

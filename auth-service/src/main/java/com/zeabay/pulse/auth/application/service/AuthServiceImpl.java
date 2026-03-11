@@ -8,7 +8,7 @@ import com.zeabay.common.kafka.event.auth.EmailVerificationRequestedEvent;
 import com.zeabay.common.kafka.event.user.UserRegisteredEvent;
 import com.zeabay.common.logging.Loggable;
 import com.zeabay.common.security.OtpGenerator;
-import com.zeabay.common.tsid.TsidIdGenerator;
+import com.zeabay.common.tsid.TsidGenerator;
 import com.zeabay.common.validation.ZeabayValidator;
 import com.zeabay.pulse.auth.application.dto.AuthTokenResult;
 import com.zeabay.pulse.auth.application.dto.LoginCommand;
@@ -29,14 +29,13 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuples;
+import reactor.util.context.ContextView;
 
 @Slf4j
 @Service
 @Loggable
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
   private static final String DEFAULT_ROLE = "user";
   private static final String AGGREGATE_TYPE = "AuthUser";
 
@@ -45,36 +44,34 @@ public class AuthServiceImpl implements AuthService {
   private final IdentityProviderPort identityProviderPort;
   private final OutboxPort outboxPort;
   private final OtpGenerator otpGenerator;
-  private final TsidIdGenerator tsidIdGenerator;
+  private final TsidGenerator tsidGenerator;
 
   @Override
   @Transactional
   public Mono<AuthUser> registerUser(RegisterUserCommand command) {
     return validateOrError(command)
-        .then(
-            Mono.deferContextual(
-                ctx -> {
-                  String traceId = ctx.getOrDefault(ZeabayConstants.TRACE_ID_CTX_KEY, "");
-                  return checkEmailNotExists(command.email())
-                      .then(identityProviderPort.registerUser(command))
-                      .flatMap(keycloakId -> createAndPersistUser(keycloakId, command, traceId))
-                      .flatMap(
-                          savedUser ->
-                              identityProviderPort
-                                  .assignRole(savedUser.getKeycloakId(), DEFAULT_ROLE)
-                                  .thenReturn(savedUser))
-                      .flatMap(
-                          savedUser ->
-                              createVerificationToken(savedUser)
-                                  .flatMap(
-                                      tuple ->
-                                          publishRegistrationEvents(
-                                                  tuple.getT1(), tuple.getT2(), traceId)
-                                              .thenReturn(tuple.getT1())));
-                }));
+        .then(Mono.deferContextual(ctx -> performRegistrationFlow(command, ctx)));
   }
 
-  // ── Step 1 ────────────────────────────────────────────────────────────────
+  private Mono<AuthUser> performRegistrationFlow(RegisterUserCommand command, ContextView ctx) {
+    String traceId = ctx.getOrDefault(ZeabayConstants.TRACE_ID_CTX_KEY, "");
+    return checkEmailNotExists(command.email())
+        .then(identityProviderPort.registerUser(command))
+        .flatMap(keycloakId -> createAndPersistUser(keycloakId, command, traceId))
+        .flatMap(
+            savedUser ->
+                identityProviderPort
+                    .assignRole(savedUser.getKeycloakId(), DEFAULT_ROLE)
+                    .thenReturn(savedUser))
+        .flatMap(
+            savedUser ->
+                createVerificationToken(savedUser)
+                    .flatMap(
+                        verificationToken ->
+                            publishRegistrationEvents(
+                                    savedUser, verificationToken.getToken(), traceId)
+                                .thenReturn(savedUser)));
+  }
 
   /** Fails fast with {@link ErrorCode#USER_ALREADY_EXISTS} if the email is already taken. */
   private Mono<Void> checkEmailNotExists(String email) {
@@ -92,8 +89,6 @@ public class AuthServiceImpl implements AuthService {
             });
   }
 
-  // ── Step 2 ────────────────────────────────────────────────────────────────
-
   /**
    * Saves the new user. If DB save fails, rolls back the Keycloak user as a compensating action.
    * {@link DataIntegrityViolationException} (race condition) is mapped to {@link
@@ -101,13 +96,7 @@ public class AuthServiceImpl implements AuthService {
    */
   private Mono<AuthUser> createAndPersistUser(
       String keycloakId, RegisterUserCommand command, String traceId) {
-    AuthUser newUser =
-        AuthUser.builder()
-            .keycloakId(keycloakId)
-            .username(command.username())
-            .email(command.email())
-            .build();
-
+    AuthUser newUser = buildAuthUserFromCommand(keycloakId, command);
     return userRepository
         .save(newUser)
         .onErrorResume(
@@ -127,11 +116,16 @@ public class AuthServiceImpl implements AuthService {
                     ErrorCode.USER_ALREADY_EXISTS, "Email is already registered"));
   }
 
-  // ── Step 3 ────────────────────────────────────────────────────────────────
+  private AuthUser buildAuthUserFromCommand(String keycloakId, RegisterUserCommand command) {
+    return AuthUser.builder()
+        .keycloakId(keycloakId)
+        .username(command.username())
+        .email(command.email())
+        .build();
+  }
 
   /** Creates a 24-hour email verification token for the given user. */
-  private Mono<reactor.util.function.Tuple2<AuthUser, String>> createVerificationToken(
-      AuthUser savedUser) {
+  private Mono<AuthVerificationToken> createVerificationToken(AuthUser savedUser) {
     String rawToken = otpGenerator.generate();
     Instant now = Instant.now();
     AuthVerificationToken verificationToken =
@@ -141,39 +135,16 @@ public class AuthServiceImpl implements AuthService {
             .expiresAt(now.plus(Duration.ofHours(24)))
             .createdAt(now)
             .build();
-    return verificationTokenRepository
-        .save(verificationToken)
-        .thenReturn(Tuples.of(savedUser, rawToken));
+    return verificationTokenRepository.save(verificationToken);
   }
-
-  // ── Step 4 ────────────────────────────────────────────────────────────────
 
   /** Writes {@code UserRegisteredEvent} and {@code EmailVerificationRequestedEvent} to outbox. */
   private Mono<Void> publishRegistrationEvents(
       AuthUser savedUser, String verificationToken, String traceId) {
     Instant now = Instant.now();
-    String userId = String.valueOf(savedUser.getId());
-
-    UserRegisteredEvent userEvent =
-        UserRegisteredEvent.builder()
-            .eventId(tsidIdGenerator.newId())
-            .traceId(traceId)
-            .occurredAt(now)
-            .userId(userId)
-            .email(savedUser.getEmail())
-            .username(savedUser.getUsername())
-            .build();
-
+    UserRegisteredEvent userEvent = buildUserRegisteredEvent(savedUser, traceId, now);
     EmailVerificationRequestedEvent emailEvent =
-        EmailVerificationRequestedEvent.builder()
-            .eventId(tsidIdGenerator.newId())
-            .traceId(traceId)
-            .occurredAt(now)
-            .userId(userId)
-            .email(savedUser.getEmail())
-            .verificationToken(verificationToken)
-            .build();
-
+        buildEmailVerificationEvent(savedUser, verificationToken, traceId, now);
     return outboxPort
         .saveEvent(
             UserRegisteredEvent.EVENT_TYPE,
@@ -192,7 +163,28 @@ public class AuthServiceImpl implements AuthService {
                 traceId));
   }
 
-  // ── Other use cases ───────────────────────────────────────────────────────
+  private UserRegisteredEvent buildUserRegisteredEvent(AuthUser user, String traceId, Instant now) {
+    return UserRegisteredEvent.builder()
+        .eventId(tsidGenerator.newId())
+        .traceId(traceId)
+        .occurredAt(now)
+        .userId(String.valueOf(user.getId()))
+        .email(user.getEmail())
+        .username(user.getUsername())
+        .build();
+  }
+
+  private EmailVerificationRequestedEvent buildEmailVerificationEvent(
+      AuthUser user, String token, String traceId, Instant now) {
+    return EmailVerificationRequestedEvent.builder()
+        .eventId(tsidGenerator.newId())
+        .traceId(traceId)
+        .occurredAt(now)
+        .userId(String.valueOf(user.getId()))
+        .email(user.getEmail())
+        .verificationToken(token)
+        .build();
+  }
 
   @Override
   public Mono<AuthTokenResult> loginUser(LoginCommand command) {
@@ -223,42 +215,44 @@ public class AuthServiceImpl implements AuthService {
         .findByToken(token)
         .switchIfEmpty(
             Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid verification token")))
+        .flatMap(this::validateToken)
         .flatMap(
-            vt -> {
-              if (vt.isExpired()) {
-                return Mono.error(
-                    new BusinessException(ErrorCode.BAD_REQUEST, "Verification token has expired"));
-              }
-              if (vt.isUsed()) {
-                return Mono.error(
-                    new BusinessException(ErrorCode.BAD_REQUEST, "Token has already been used"));
-              }
-              vt.setUsedAt(Instant.now());
-              return verificationTokenRepository.save(vt).thenReturn(vt.getUserId());
-            })
-        .flatMap(
-            userId ->
+            vt ->
                 userRepository
-                    .findById(userId)
+                    .findById(vt.getUserId())
                     .switchIfEmpty(
                         Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "User not found")))
-                    .flatMap(
-                        user -> {
-                          if (!email.equalsIgnoreCase(user.getEmail())) {
-                            return Mono.error(
-                                new BusinessException(
-                                    ErrorCode.NOT_FOUND, "Invalid verification token"));
-                          }
-                          return identityProviderPort
-                              .setEmailVerified(user.getKeycloakId(), true)
-                              .then(
-                                  Mono.defer(
-                                      () -> {
-                                        user.setStatus(AuthUserStatus.ACTIVE);
-                                        return userRepository.save(user);
-                                      }));
-                        }))
+                    .flatMap(user -> markTokenUsedAndActivateUser(vt, user, email)))
+        .flatMap(
+            savedUser -> identityProviderPort.setEmailVerified(savedUser.getKeycloakId(), true))
         .then();
+  }
+
+  private Mono<AuthVerificationToken> validateToken(AuthVerificationToken vt) {
+    if (vt.isExpired()) {
+      return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+    }
+    if (vt.isUsed()) {
+      return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token used"));
+    }
+    return Mono.just(vt);
+  }
+
+  /** vt ve user parametre olarak alınır; findById çağrılmaz. */
+  private Mono<AuthUser> markTokenUsedAndActivateUser(
+      AuthVerificationToken vt, AuthUser user, String email) {
+    if (!email.equalsIgnoreCase(user.getEmail())) {
+      return Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid token"));
+    }
+    vt.setUsedAt(Instant.now());
+    return verificationTokenRepository
+        .save(vt)
+        .then(
+            Mono.defer(
+                () -> {
+                  user.setStatus(AuthUserStatus.ACTIVE);
+                  return userRepository.save(user);
+                }));
   }
 
   @Override
@@ -280,12 +274,7 @@ public class AuthServiceImpl implements AuthService {
     if (errors.isEmpty()) {
       return Mono.empty();
     }
-    String message =
-        "Validation failed: "
-            + errors.stream()
-                .map(e -> e.field() + " " + e.message())
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
+    String message = "Validation failed: " + ZeabayValidator.formatErrors(errors);
     return Mono.error(new BusinessException(ErrorCode.VALIDATION_ERROR, message));
   }
 }
