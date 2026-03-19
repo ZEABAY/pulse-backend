@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # -B: Batch mode (daha temiz log)
+      # -ntp: No transfer progress (indirme loglarını gizler)
+      # -fae: Fail at end (tüm modülleri test et, hataları sonda göster)
+      - name: Build and Verify
+        run: ./mvnw -B -ntp clean verify -fae

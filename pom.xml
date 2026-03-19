@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <developers>
+        <developer>
+            <id>zeabay</id>
+            <name>Zeynel Abiddin Aydar</name>
+            <email>zeynelaydar@gmail.com</email>
+            <url>https://zeynelaydar.com</url>
+            <organization>Zeabay</organization>
+            <organizationUrl>https://github.com/zeabay</organizationUrl>
+            <roles>
+                <role>Lead Developer</role>
+                <role>Architect</role>
+            </roles>
+            <timezone>Europe/Istanbul</timezone>
+        </developer>
+    </developers>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.2</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.zeabay.pulse</groupId>
+    <artifactId>pulse-backend</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>pulse-backend</name>
+    <description>Pulse backend multi-service workspace</description>
+
+    <properties>
+        <java.version>25</java.version>
+        <maven.compiler.release>25</maven.compiler.release>
+        <spring-cloud.version>2025.1.1</spring-cloud.version>
+
+        <jackson.version>2.21.0</jackson.version>
+        <zeabay-common.version>1.0.0-SNAPSHOT</zeabay-common.version>
+        <lombok.version>1.18.42</lombok.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+
+        <!-- quality gate -->
+        <spotless.version>3.2.1</spotless.version>
+        <googlejavaformat.version>1.34.1</googlejavaformat.version>
+        <spotless.skip>false</spotless.skip>
+
+        <!-- SonarQube — token is defined per-developer in ~/.m2/settings.xml (not committed) -->
+        <!-- Run: mvn sonar:sonar -Psonar -->
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.java.source>25</sonar.java.source>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <modules>
+        <module>zeabay-common</module>
+        <module>pulse-shared</module>
+        <module>pulse-gateway</module>
+        <module>auth-service</module>
+        <module>mail-service</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.zeabay</groupId>
+                <artifactId>zeabay-bom</artifactId>
+                <version>${zeabay-common.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <executions>
+                        <execution>
+                            <id>enforce</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <requireJavaVersion>
+                                        <version>[25,)</version>
+                                    </requireJavaVersion>
+                                    <requireMavenVersion>
+                                        <version>[3.9.0,)</version>
+                                    </requireMavenVersion>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.14.1</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <compilerArgs>
+                            <arg>-parameters</arg>
+                        </compilerArgs>
+
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                    <configuration>
+                        <skip>${spotless.skip}</skip>
+                        <java>
+                            <googleJavaFormat>
+                                <version>${googlejavaformat.version}</version>
+                                <style>GOOGLE</style>
+                            </googleJavaFormat>
+                            <importOrder/>
+                            <removeUnusedImports/>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                        </java>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotless-apply</id>
+                            <phase>process-sources</phase>
+                            <goals>
+                                <goal>apply</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.1.0.4751</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

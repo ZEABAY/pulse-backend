@@ -1,0 +1,46 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: mail-service
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/pulse?schema=mail
+    username: ${POSTGRES_USER:pulse}
+    password: ${POSTGRES_PASSWORD:pulse}
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.zeabay: INFO
+    org.flywaydb: INFO
+    org.springframework.r2dbc: WARN
+    io.r2dbc.postgresql: WARN
+    org.apache.kafka: WARN
+    org.apache.kafka.clients.admin: INFO
+    com.zeabay.pulse.shared.kafka: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

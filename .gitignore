@@ -1,0 +1,17 @@
+# Maven
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE compiled output (Eclipse JDT LS / Cursor)
+**/bin/
+
+# IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env

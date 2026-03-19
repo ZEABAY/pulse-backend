@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  jaeger_storage_exporter:
+    # jaeger_storage.backends altında tanımladığımız backend adını referans eder
+    trace_storage: memstore
+
+extensions:
+  healthcheckv2:
+    http:
+      endpoint: 0.0.0.0:13133
+
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+  # ÖNEMLİ: backend adı (memstore) + storage türü (memory) doğru şekilde iç içe olmalı
+  jaeger_storage:
+    backends:
+      memstore:
+        memory:
+          max_traces: 100000
+
+  # UI + query API'yi açan extension
+  jaeger_query:
+    storage:
+      traces: memstore
+    base_path: /
+    http:
+      endpoint: 0.0.0.0:16686
+    grpc:
+      endpoint: 0.0.0.0:16685
+    ui:
+      log_access: true
+
+service:
+  extensions: [ jaeger_storage, jaeger_query, healthcheckv2, zpages ]
+  pipelines:
+    traces:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ jaeger_storage_exporter ]

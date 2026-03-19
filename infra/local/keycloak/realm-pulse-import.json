@@ -1,0 +1,49 @@
+{
+  "realm": "pulse",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "user",  "description": "Standard platform user" },
+      { "name": "admin", "description": "Platform administrator"  }
+    ]
+  },
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "requiredCredentials": ["password"],
+  "defaultSignatureAlgorithm": "RS256",
+  "revokeRefreshToken": false,
+  "clients": [
+    {
+      "clientId": "pulse-backend-client",
+      "name": "",
+      "description": "",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "pulse-backend-secret",
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true
+    }
+  ]
+}

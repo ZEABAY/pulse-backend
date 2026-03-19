@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.zeabay.pulse</groupId>
+        <artifactId>pulse-backend</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mail-service</artifactId>
+    <name>mail-service</name>
+
+    <dependencies>
+        <!-- Persistence -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>r2dbc-postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Pulse shared: domain events, topic constants, topic creation -->
+        <dependency>
+            <groupId>com.zeabay.pulse</groupId>
+            <artifactId>pulse-shared</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- zeabay-common -->
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-logging</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-r2dbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-inbox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-ops</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-info</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>10.20.1</version>
+                <configuration>
+                    <url>jdbc:postgresql://localhost:5432/pulse</url>
+                    <user>pulse</user>
+                    <password>pulse</password>
+                    <schemas>
+                        <schema>mail</schema>
+                    </schemas>
+                    <locations>
+                        <location>classpath:db/migration</location>
+                    </locations>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

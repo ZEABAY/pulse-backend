@@ -1,0 +1,91 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: auth-service
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/pulse?schema=auth
+    username: ${POSTGRES_USER:pulse}
+    password: ${POSTGRES_PASSWORD:pulse}
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/certs
+
+springdoc:
+  api-docs:
+    enabled: true
+
+# Keycloak: realm 'pulse', client 'pulse-backend-client'.
+# For local dev, import the realm with: infra/local keycloak --import-realm
+# Override the client secret via KEYCLOAK_CLIENT_SECRET; default is 'pulse-backend-secret'.
+keycloak:
+  auth-server-url: http://localhost:9080
+  realm: pulse
+  resource: pulse-backend-client
+  credentials:
+    secret: ${KEYCLOAK_CLIENT_SECRET:pulse-backend-secret}
+  admin:
+    username: ${KEYCLOAK_ADMIN_USER:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.zeabay: INFO
+    org.flywaydb: INFO
+    org.springframework.security: WARN
+    org.springframework.web.reactive: WARN
+    org.springframework.r2dbc: WARN
+    io.r2dbc.postgresql: WARN
+    org.apache.kafka: WARN
+    org.apache.kafka.clients.admin: INFO
+    com.zeabay.pulse.shared.kafka: INFO
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    baggage:
+      correlation:
+        enabled: true
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+zeabay:
+  security:
+    public-paths:
+      - /api/v1/auth/register
+      - /api/v1/auth/login
+      - /api/v1/auth/verify
+      - /api/v1/auth/refresh
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /webjars/**
+  redis:
+    prefix: zeabay
+  outbox:
+    polling-interval-ms: 10000
+  openapi:
+    server-url: ${GATEWAY_URL:http://localhost:8080}
+    server-description: API Gateway (local dev)
