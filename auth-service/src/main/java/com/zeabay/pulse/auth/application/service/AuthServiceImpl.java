@@ -113,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
             })
         .onErrorMap(
             DataIntegrityViolationException.class,
-            ex ->
+            _ ->
                 new BusinessException(
                     ErrorCode.USER_ALREADY_EXISTS, "Email is already registered"));
   }
@@ -202,8 +202,7 @@ public class AuthServiceImpl implements AuthService {
             vt ->
                 userRepository
                     .findById(vt.getUserId())
-                    .switchIfEmpty(
-                        Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "User not found")))
+                    .switchIfEmpty(Mono.error(new BusinessException(ErrorCode.USER_NOT_FOUND)))
                     .flatMap(user -> markTokenUsedAndActivateUser(vt, user, email)))
         .flatMap(
             savedUser -> identityProviderPort.setEmailVerified(savedUser.getKeycloakId(), true))

@@ -44,6 +44,7 @@
         <jackson.version>2.21.0</jackson.version>
         <zeabay-common.version>1.0.0-SNAPSHOT</zeabay-common.version>
         <lombok.version>1.18.42</lombok.version>
+        <springboot4-dotenv.version>5.1.0</springboot4-dotenv.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
 
         <!-- quality gate -->
@@ -90,6 +91,12 @@
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>me.paulschwarz</groupId>
+                <artifactId>springboot4-dotenv</artifactId>
+                <version>${springboot4-dotenv.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

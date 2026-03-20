@@ -22,10 +22,10 @@ import reactor.core.publisher.Mono;
 @Component
 public class EmailVerificationConsumer extends BaseConsumer<EmailVerificationRequestedEvent> {
 
-  @Value("${MAIL_FROM:${MAIL_USERNAME}}")
-  private String mailFrom;
-
   private final JavaMailSender mailSender;
+
+  @Value("${spring.mail.username}")
+  private String mailFrom;
 
   public EmailVerificationConsumer(JavaMailSender mailSender) {
     this.mailSender = mailSender;

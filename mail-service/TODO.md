@@ -1,0 +1,1 @@
+# gönderilen mailler için bir log tablosu oluşturulmalı.
