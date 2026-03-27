@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,19 @@ public class AuthController {
   @Operation(
       summary = "Register a new user",
       description =
-          "Creates a new user in the system and Keycloak. Sends a verification email via the outbox.")
+          """
+              Creates a new user in the system and Keycloak. Sends a verification email via the\
+               outbox.
+
+              **Username rules:**
+              - 3-30 characters, letters/digits/underscores/periods only
+              - Must not start or end with a period
+              - Consecutive periods are not allowed
+
+              **Password rules:**
+              - 8-100 characters
+              - At least one uppercase letter, one lowercase letter, one digit, and one\
+               special character""")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "User created successfully"),
     @ApiResponse(
@@ -72,7 +85,14 @@ public class AuthController {
 
   @Operation(
       summary = "Login user",
-      description = "Authenticates user against Keycloak and returns JWT tokens.")
+      description =
+          """
+              Authenticates user against Keycloak and returns JWT tokens.
+
+              **Password rules:**
+              - 8-100 characters
+              - At least one uppercase letter, one lowercase letter, one digit, and one\
+               special character""")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Successful authentication"),
     @ApiResponse(responseCode = "401", description = "Invalid credentials")
@@ -141,8 +161,11 @@ public class AuthController {
     String jti = jwt.getClaimAsString("jti");
     String blacklistKey =
         (jti != null && !jti.isBlank()) ? jti : JwtHashUtils.sha256(jwt.getTokenValue());
-    long ttlSeconds =
-        Math.max(1, jwt.getExpiresAt().getEpochSecond() - Instant.now().getEpochSecond());
+
+    Instant expiresAt = Objects.requireNonNull(jwt.getExpiresAt(), "JWT exp claim must be present");
+
+    long ttlSeconds = Math.max(1, expiresAt.getEpochSecond() - Instant.now().getEpochSecond());
+
     return authService.logout(keycloakId, blacklistKey, ttlSeconds);
   }
 }
