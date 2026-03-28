@@ -49,7 +49,7 @@ public class KeycloakAdapter implements IdentityProviderPort {
         .map(KeycloakAdapter::toAuthTokenResult)
         .onErrorMap(
             WebClientResponseException.class,
-            ex -> new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid credentials"));
+                _ -> new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid credentials"));
   }
 
   @Override
@@ -64,7 +64,7 @@ public class KeycloakAdapter implements IdentityProviderPort {
         .map(KeycloakAdapter::toAuthTokenResult)
         .onErrorMap(
             WebClientResponseException.class,
-            ex ->
+                _ ->
                 new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid or expired refresh token"));
   }
 
@@ -76,6 +76,11 @@ public class KeycloakAdapter implements IdentityProviderPort {
   @Override
   public Mono<Void> deleteUser(String keycloakId) {
     return zeabayKeycloakClient.deleteUser(keycloakId);
+  }
+
+  @Override
+  public Mono<Void> resetPassword(String keycloakId, String newPassword) {
+    return zeabayKeycloakClient.resetPassword(keycloakId, newPassword);
   }
 
   private static AuthTokenResult toAuthTokenResult(ZeabayTokenResponse r) {

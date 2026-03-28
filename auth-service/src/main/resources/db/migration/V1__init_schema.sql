@@ -41,3 +41,19 @@ CREATE TABLE auth_verification_tokens (
 
 CREATE INDEX idx_verification_tokens_token ON auth_verification_tokens (token);
 CREATE INDEX idx_verification_tokens_user  ON auth_verification_tokens (user_id);
+
+-- -----------------------------------------------------------
+-- auth_password_reset_tokens
+-- Short-lived tokens for password reset flow.
+-- -----------------------------------------------------------
+CREATE TABLE auth_password_reset_tokens (
+    id         BIGINT       PRIMARY KEY,                          -- TSID (assigned by application)
+    user_id    BIGINT       NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
+    token      VARCHAR(255) UNIQUE NOT NULL,                      -- Secure dynamic token
+    expires_at TIMESTAMPTZ  NOT NULL,
+    used_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_password_reset_tokens_token ON auth_password_reset_tokens (token);
+CREATE INDEX idx_password_reset_tokens_user  ON auth_password_reset_tokens (user_id);

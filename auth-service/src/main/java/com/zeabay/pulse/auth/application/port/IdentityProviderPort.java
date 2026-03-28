@@ -20,4 +20,6 @@ public interface IdentityProviderPort {
   Mono<Void> logout(String keycloakId);
 
   Mono<Void> deleteUser(String keycloakId);
+
+  Mono<Void> resetPassword(String keycloakId, String newPassword);
 }

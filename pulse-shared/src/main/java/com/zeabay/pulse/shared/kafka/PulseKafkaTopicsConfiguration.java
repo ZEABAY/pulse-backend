@@ -21,15 +21,32 @@ public class PulseKafkaTopicsConfiguration {
   /** Primary topic for {@code EmailVerificationRequestedEvent}. */
   @Bean
   public NewTopic emailVerificationTopic() {
-    return declare(PulseTopics.EMAIL_VERIFICATION, 3, 1);
+    return declare(PulseTopics.EMAIL_VERIFICATION);
   }
 
   /** Dead-letter queue for failed email verification messages. */
   @Bean
   public NewTopic emailVerificationDlqTopic() {
-    return declare(PulseTopics.EMAIL_VERIFICATION_DLQ, 3, 1);
+    return declare(PulseTopics.EMAIL_VERIFICATION_DLQ);
   }
 
+  /** Topic for {@code PasswordResetRequestedEvent}. */
+  @Bean
+  public NewTopic passwordResetTopic() {
+    return declare(PulseTopics.PASSWORD_RESET);
+  }
+
+  /** Dead-letter queue for failed password reset messages. */
+  @Bean
+  public NewTopic passwordResetDlqTopic() {
+    return declare(PulseTopics.PASSWORD_RESET_DLQ);
+  }
+
+  private static NewTopic declare(String name) {
+    return declare(name, 3, 1);
+  }
+
+  @SuppressWarnings("SameParameterValue")
   private static NewTopic declare(String name, int partitions, int replicas) {
     log.info(
         "[Kafka] Declaring topic '{}' (partitions={}, replicas={})", name, partitions, replicas);

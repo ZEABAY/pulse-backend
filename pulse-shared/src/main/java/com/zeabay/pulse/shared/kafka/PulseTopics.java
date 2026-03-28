@@ -34,5 +34,11 @@ public final class PulseTopics {
   /** Dead-letter queue for {@link #EMAIL_VERIFICATION}. */
   public static final String EMAIL_VERIFICATION_DLQ = EMAIL_VERIFICATION + ".dlq";
 
+  /** Topic on which auth-service publishes password reset requests. */
+  public static final String PASSWORD_RESET = PREFIX + "." + AUTH + ".password-reset";
+
+  /** Dead-letter queue for {@link #PASSWORD_RESET}. */
+  public static final String PASSWORD_RESET_DLQ = PASSWORD_RESET + ".dlq";
+
   private PulseTopics() {}
 }

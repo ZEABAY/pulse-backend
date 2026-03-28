@@ -17,4 +17,10 @@ public interface AuthService {
   Mono<AuthTokenResult> refreshToken(String refreshToken);
 
   Mono<Void> logout(String keycloakId, String jti, long ttlSeconds);
+
+  Mono<Void> forgotPassword(String email);
+
+  Mono<Void> verifyResetOtp(String email, String otp);
+
+  Mono<Void> resetPassword(String email, String otp, String newPassword);
 }

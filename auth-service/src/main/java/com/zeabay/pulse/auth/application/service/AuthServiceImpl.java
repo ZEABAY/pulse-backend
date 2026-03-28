@@ -14,12 +14,15 @@ import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import com.zeabay.pulse.auth.application.port.TokenBlacklistPort;
 import com.zeabay.pulse.auth.application.port.out.OutboxPort;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
+import com.zeabay.pulse.auth.domain.model.AuthPasswordResetToken;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
 import com.zeabay.pulse.auth.domain.model.AuthUserStatus;
 import com.zeabay.pulse.auth.domain.model.AuthVerificationToken;
+import com.zeabay.pulse.auth.domain.repository.AuthPasswordResetTokenRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthUserRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthVerificationTokenRepository;
 import com.zeabay.pulse.shared.events.auth.EmailVerificationRequestedEvent;
+import com.zeabay.pulse.shared.events.auth.PasswordResetRequestedEvent;
 import com.zeabay.pulse.shared.kafka.PulseTopics;
 import java.time.Duration;
 import java.time.Instant;
@@ -41,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
 
   private final AuthUserRepository userRepository;
   private final AuthVerificationTokenRepository verificationTokenRepository;
+  private final AuthPasswordResetTokenRepository passwordResetTokenRepository;
   private final IdentityProviderPort identityProviderPort;
   private final TokenBlacklistPort tokenBlacklistPort;
   private final OutboxPort outboxPort;
@@ -239,6 +243,116 @@ public class AuthServiceImpl implements AuthService {
   @Override
   public Mono<AuthTokenResult> refreshToken(String refreshToken) {
     return identityProviderPort.refreshToken(refreshToken);
+  }
+
+  @Override
+  @Transactional
+  public Mono<Void> forgotPassword(String email) {
+    return Mono.deferContextual(
+        ctx -> {
+          String traceId = ctx.getOrDefault(ZeabayConstants.TRACE_ID_CTX_KEY, "");
+          return userRepository
+              .findByEmail(email)
+              .flatMap(
+                  user -> {
+                    Instant now = Instant.now();
+                    return passwordResetTokenRepository
+                        .invalidatePreviousTokensForUser(user.getId(), now)
+                        .then(
+                            Mono.defer(
+                                () -> {
+                                  String token = otpGenerator.generate();
+                                  AuthPasswordResetToken resetToken =
+                                      AuthPasswordResetToken.builder()
+                                          .userId(user.getId())
+                                          .token(token)
+                                          .expiresAt(now.plus(Duration.ofMinutes(15)))
+                                          .createdAt(now)
+                                          .build();
+
+                                  return passwordResetTokenRepository
+                                      .save(resetToken)
+                                      .flatMap(
+                                              _ ->
+                                              publishPasswordResetEvent(user, token, traceId, now));
+                                }));
+                  })
+              .then();
+        });
+  }
+
+  private Mono<Void> publishPasswordResetEvent(
+      AuthUser user, String token, String traceId, Instant now) {
+    PasswordResetRequestedEvent event =
+        PasswordResetRequestedEvent.builder()
+            .eventId(tsidGenerator.newId())
+            .traceId(traceId)
+            .occurredAt(now)
+            .userId(String.valueOf(user.getId()))
+            .email(user.getEmail())
+            .resetToken(token)
+            .build();
+    return outboxPort.saveEvent(
+        event.getEventId(),
+        PasswordResetRequestedEvent.EVENT_TYPE,
+        PulseTopics.PASSWORD_RESET,
+        AGGREGATE_TYPE,
+        user.getId(),
+        event,
+        traceId);
+  }
+
+  @Override
+  public Mono<Void> verifyResetOtp(String email, String otp) {
+    return userRepository
+        .findByEmail(email)
+        .flatMap(user -> passwordResetTokenRepository.findByUserIdAndToken(user.getId(), otp))
+        .flatMap(
+            rt -> {
+              if (rt.isExpired()) {
+                return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+              }
+              if (rt.isUsed()) {
+                return Mono.error(
+                    new BusinessException(ErrorCode.BAD_REQUEST, "Token already used"));
+              }
+              return Mono.just(true); // Signal success
+            })
+        .switchIfEmpty(
+            Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid or expired token")))
+        .then();
+  }
+
+  @Override
+  @Transactional
+  public Mono<Void> resetPassword(String email, String otp, String newPassword) {
+    return userRepository
+        .findByEmail(email)
+        .flatMap(
+            user ->
+                passwordResetTokenRepository
+                    .findByUserIdAndToken(user.getId(), otp)
+                    .flatMap(
+                        rt -> {
+                          if (rt.isExpired()) {
+                            return Mono.error(
+                                new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+                          }
+                          if (rt.isUsed()) {
+                            return Mono.error(
+                                new BusinessException(ErrorCode.BAD_REQUEST, "Token already used"));
+                          }
+                          rt.setUsedAt(Instant.now());
+                          return passwordResetTokenRepository
+                              .save(rt)
+                              .then(
+                                  identityProviderPort.resetPassword(
+                                      user.getKeycloakId(), newPassword))
+                              .thenReturn(true);
+                        }))
+        .switchIfEmpty(
+            Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid or expired token")))
+        .then();
   }
 
   @Override

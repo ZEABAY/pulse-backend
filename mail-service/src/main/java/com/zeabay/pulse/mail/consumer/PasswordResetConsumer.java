@@ -1,7 +1,7 @@
 package com.zeabay.pulse.mail.consumer;
 
 import com.zeabay.common.inbox.BaseConsumer;
-import com.zeabay.pulse.shared.events.auth.EmailVerificationRequestedEvent;
+import com.zeabay.pulse.shared.events.auth.PasswordResetRequestedEvent;
 import com.zeabay.pulse.shared.kafka.PulseTopics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 /**
- * Kafka consumer that sends email verification messages.
+ * Kafka consumer that sends password reset email.
  *
  * <p>Extends {@link BaseConsumer} to guarantee exactly-once delivery via the Inbox pattern.
  * Duplicate events (same {@code eventId} + {@code serviceName}) are automatically discarded by the
@@ -20,39 +20,38 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Component
-public class EmailVerificationConsumer extends BaseConsumer<EmailVerificationRequestedEvent> {
+public class PasswordResetConsumer extends BaseConsumer<PasswordResetRequestedEvent> {
 
   private final JavaMailSender mailSender;
 
   @Value("${spring.mail.username}")
   private String mailFrom;
 
-  public EmailVerificationConsumer(JavaMailSender mailSender) {
+  public PasswordResetConsumer(JavaMailSender mailSender) {
     this.mailSender = mailSender;
   }
 
   @KafkaListener(
-      topics = PulseTopics.EMAIL_VERIFICATION,
+      topics = PulseTopics.PASSWORD_RESET,
       groupId = PulseTopics.CONSUMER_GROUP_ID_PATTERN,
       containerFactory = "zeabayKafkaListenerContainerFactory")
-  public void consume(EmailVerificationRequestedEvent event) {
+  public void consume(PasswordResetRequestedEvent event) {
     super.handleEvent(event);
   }
 
   @Override
-  protected Mono<Void> doProcess(EmailVerificationRequestedEvent event) {
-    return Mono.fromRunnable(
-            () -> sendVerificationEmail(event.getEmail(), event.getVerificationToken()))
+  protected Mono<Void> doProcess(PasswordResetRequestedEvent event) {
+    return Mono.fromRunnable(() -> sendPasswordResetEmail(event.getEmail(), event.getResetToken()))
         .doOnSuccess(
             _ ->
                 log.info(
-                    "VERIFICATION_MAIL_PROCESSED: email={}, eventId={}",
+                    "PASSWORD_RESET_MAIL_PROCESSED: email={}, eventId={}",
                     event.getEmail(),
                     event.getEventId()))
         .onErrorMap(
             e -> {
               log.error(
-                  "VERIFICATION_MAIL_FAILED: email={}, eventId={}, error={}",
+                  "PASSWORD_RESET_MAIL_FAILED: email={}, eventId={}, error={}",
                   event.getEmail(),
                   event.getEventId(),
                   e.getMessage());
@@ -61,13 +60,13 @@ public class EmailVerificationConsumer extends BaseConsumer<EmailVerificationReq
         .then();
   }
 
-  private void sendVerificationEmail(String email, String token) {
+  private void sendPasswordResetEmail(String email, String token) {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setTo(email);
-    message.setSubject("Verify your Pulse account");
-    message.setText("Your verification code: " + token);
+    message.setSubject("Reset your Pulse password");
+    message.setText("Your password reset code: " + token);
     message.setFrom(mailFrom);
     mailSender.send(message);
-    log.info("VERIFICATION_MAIL_DELIVERED: to {}", email);
+    log.info("PASSWORD_RESET_MAIL_DELIVERED: to {}", email);
   }
 }

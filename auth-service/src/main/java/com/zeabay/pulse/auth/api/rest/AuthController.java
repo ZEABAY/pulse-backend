@@ -6,11 +6,14 @@ import com.zeabay.common.api.model.ZeabayApiResponse;
 import com.zeabay.common.logging.Loggable;
 import com.zeabay.common.web.ZeabayResponses;
 import com.zeabay.pulse.auth.api.dto.AuthTokenApiResponse;
+import com.zeabay.pulse.auth.api.dto.ForgotPasswordApiRequest;
 import com.zeabay.pulse.auth.api.dto.LoginApiRequest;
 import com.zeabay.pulse.auth.api.dto.RefreshTokenApiRequest;
 import com.zeabay.pulse.auth.api.dto.RegisterApiRequest;
 import com.zeabay.pulse.auth.api.dto.RegisterApiResponse;
+import com.zeabay.pulse.auth.api.dto.ResetPasswordApiRequest;
 import com.zeabay.pulse.auth.api.dto.VerifyEmailApiRequest;
+import com.zeabay.pulse.auth.api.dto.VerifyResetOtpApiRequest;
 import com.zeabay.pulse.auth.api.mapper.AuthMapper;
 import com.zeabay.pulse.auth.application.usecase.AuthService;
 import com.zeabay.pulse.auth.config.JwtHashUtils;
@@ -167,5 +170,56 @@ public class AuthController {
     long ttlSeconds = Math.max(1, expiresAt.getEpochSecond() - Instant.now().getEpochSecond());
 
     return authService.logout(keycloakId, blacklistKey, ttlSeconds);
+  }
+
+  @Operation(
+      summary = "Forgot password",
+      description =
+          "Initiates a password reset flow by sending a token to the user's email if it exists.")
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "Password reset request processed successfully"),
+    @ApiResponse(responseCode = "400", description = "Invalid email format")
+  })
+  @PostMapping("/forgot-password")
+  public Mono<ZeabayApiResponse<String>> forgotPassword(
+      @Valid @RequestBody ForgotPasswordApiRequest request) {
+    return authService
+        .forgotPassword(request.email())
+        .then(ZeabayResponses.ok("Password reset request processed"));
+  }
+
+  @Operation(
+      summary = "Verify password reset OTP",
+      description =
+          "Validates the 6-digit OTP sent to the user's email before allowing password reset.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "OTP is valid"),
+    @ApiResponse(responseCode = "400", description = "OTP expired, used, or invalid format"),
+    @ApiResponse(responseCode = "404", description = "Invalid OTP or user not found")
+  })
+  @PostMapping("/verify-reset-otp")
+  public Mono<ZeabayApiResponse<String>> verifyResetOtp(
+      @Valid @RequestBody VerifyResetOtpApiRequest request) {
+    return authService
+        .verifyResetOtp(request.email(), request.otp())
+        .then(ZeabayResponses.ok("OTP is valid"));
+  }
+
+  @Operation(
+      summary = "Reset password",
+      description = "Resets user password using the OTP verified previously.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Password reset successfully"),
+    @ApiResponse(responseCode = "400", description = "OTP expired, used, or invalid format"),
+    @ApiResponse(responseCode = "404", description = "OTP not found or user not found")
+  })
+  @PostMapping("/reset-password")
+  public Mono<ZeabayApiResponse<String>> resetPassword(
+      @Valid @RequestBody ResetPasswordApiRequest request) {
+    return authService
+        .resetPassword(request.email(), request.otp(), request.password())
+        .then(ZeabayResponses.ok("Password reset successfully"));
   }
 }
