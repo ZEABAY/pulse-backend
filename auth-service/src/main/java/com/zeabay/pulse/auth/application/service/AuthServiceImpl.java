@@ -187,7 +187,7 @@ public class AuthServiceImpl implements AuthService {
                       if (user.getStatus() == AuthUserStatus.PENDING_VERIFICATION) {
                         return Mono.error(
                             new BusinessException(
-                                ErrorCode.UNAUTHORIZED,
+                                ErrorCode.EMAIL_NOT_VERIFIED,
                                 "Email not verified. Please check your inbox and verify your account."));
                       }
                       return identityProviderPort.loginUser(command);
@@ -273,7 +273,7 @@ public class AuthServiceImpl implements AuthService {
                                   return passwordResetTokenRepository
                                       .save(resetToken)
                                       .flatMap(
-                                              _ ->
+                                          _ ->
                                               publishPasswordResetEvent(user, token, traceId, now));
                                 }));
                   })
