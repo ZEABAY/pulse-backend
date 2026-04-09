@@ -16,6 +16,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+/**
+ * Infrastructure adapter that delegates identity provider operations to {@link
+ * ZeabayKeycloakClient} and maps Keycloak responses to application-layer DTOs.
+ */
 @Loggable
 @Component
 @RequiredArgsConstructor

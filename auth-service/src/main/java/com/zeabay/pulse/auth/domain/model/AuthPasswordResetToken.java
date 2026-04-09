@@ -10,6 +10,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+/** Time-limited OTP token for password reset. Tracks expiry and single-use via {@code usedAt}. */
 @Getter
 @Setter
 @Builder

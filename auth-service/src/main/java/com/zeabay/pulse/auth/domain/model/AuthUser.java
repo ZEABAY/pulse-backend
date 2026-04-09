@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+/** R2DBC entity representing a registered user in the auth-service schema. */
 @Data
 @Builder
 @NoArgsConstructor

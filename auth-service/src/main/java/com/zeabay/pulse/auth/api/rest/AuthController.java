@@ -37,6 +37,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+/**
+ * REST controller for all authentication operations: registration, login, email verification,
+ * password reset, and session management.
+ *
+ * <p>All endpoints return a standardized {@link ZeabayApiResponse} envelope. OpenAPI annotations
+ * provide Swagger UI documentation.
+ */
 @Loggable
 @RestController
 @RequiredArgsConstructor

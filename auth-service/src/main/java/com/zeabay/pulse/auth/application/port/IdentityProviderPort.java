@@ -5,6 +5,12 @@ import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import reactor.core.publisher.Mono;
 
+/**
+ * Output port for identity provider operations (Keycloak).
+ *
+ * <p>Isolates the application layer from the concrete Keycloak SDK. Implemented by {@link
+ * com.zeabay.pulse.auth.infrastructure.adapter.KeycloakAdapter}.
+ */
 public interface IdentityProviderPort {
 
   Mono<String> registerUser(RegisterUserCommand command);

@@ -34,6 +34,13 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
+/**
+ * Core authentication service implementing the full user lifecycle: registration, login, email
+ * verification, password reset, and session logout.
+ *
+ * <p>Uses the transactional outbox pattern for event publishing and the inbox pattern (via {@link
+ * com.zeabay.common.inbox.BaseConsumer}) for saga compensation on mail delivery failures.
+ */
 @Slf4j
 @Service
 @Loggable

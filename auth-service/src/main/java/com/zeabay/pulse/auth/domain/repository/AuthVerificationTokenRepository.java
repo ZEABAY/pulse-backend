@@ -5,6 +5,7 @@ import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
+/** Reactive repository for {@link AuthVerificationToken} entities. */
 @Repository
 public interface AuthVerificationTokenRepository
     extends R2dbcRepository<AuthVerificationToken, Long> {

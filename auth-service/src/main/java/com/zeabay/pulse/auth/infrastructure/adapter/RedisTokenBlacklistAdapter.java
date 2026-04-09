@@ -9,6 +9,12 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+/**
+ * Redis-backed implementation of {@link TokenBlacklistPort}.
+ *
+ * <p>Stores blacklisted JTI keys with a TTL matching the token's remaining lifetime, so expired
+ * entries are automatically evicted.
+ */
 @Loggable
 @Component
 @RequiredArgsConstructor

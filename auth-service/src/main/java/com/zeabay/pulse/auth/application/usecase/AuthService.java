@@ -6,6 +6,7 @@ import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.domain.model.AuthUser;
 import reactor.core.publisher.Mono;
 
+/** Primary use case interface for all authentication operations. */
 public interface AuthService {
 
   Mono<AuthUser> registerUser(RegisterUserCommand command);

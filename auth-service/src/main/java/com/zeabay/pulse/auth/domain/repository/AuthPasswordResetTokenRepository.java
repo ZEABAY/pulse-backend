@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
+/** Reactive repository for {@link AuthPasswordResetToken} entities. */
 @Repository
 public interface AuthPasswordResetTokenRepository
     extends R2dbcRepository<AuthPasswordResetToken, Long> {

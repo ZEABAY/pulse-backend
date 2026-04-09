@@ -8,6 +8,7 @@ import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import org.mapstruct.Mapper;
 
+/** MapStruct mapper for converting between API DTOs and application-layer commands/results. */
 @Mapper(componentModel = "spring")
 public interface AuthMapper {
 
