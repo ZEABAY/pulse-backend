@@ -10,7 +10,6 @@ import com.zeabay.pulse.auth.api.dto.ForgotPasswordApiRequest;
 import com.zeabay.pulse.auth.api.dto.LoginApiRequest;
 import com.zeabay.pulse.auth.api.dto.RefreshTokenApiRequest;
 import com.zeabay.pulse.auth.api.dto.RegisterApiRequest;
-import com.zeabay.pulse.auth.api.dto.RegisterApiResponse;
 import com.zeabay.pulse.auth.api.dto.ResetPasswordApiRequest;
 import com.zeabay.pulse.auth.api.dto.VerifyEmailApiRequest;
 import com.zeabay.pulse.auth.api.dto.VerifyResetOtpApiRequest;
@@ -24,12 +23,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.time.Instant;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -69,21 +66,16 @@ public class AuthController {
               - At least one uppercase letter, one lowercase letter, one digit, and one\
                special character""")
   @ApiResponses({
-    @ApiResponse(responseCode = "201", description = "User created successfully"),
+    @ApiResponse(responseCode = "200", description = "User created successfully"),
     @ApiResponse(
         responseCode = "400",
         description = "Invalid request payload or user already exists")
   })
   @PostMapping("/register")
-  public Mono<ResponseEntity<ZeabayApiResponse<RegisterApiResponse>>> register(
-      @Valid @RequestBody RegisterApiRequest request) {
+  public Mono<ZeabayApiResponse<String>> register(@Valid @RequestBody RegisterApiRequest request) {
     return authService
         .registerUser(authMapper.toRegisterCommand(request))
-        .map(authMapper::toRegisterApiResponse)
-        .flatMap(
-            response ->
-                ZeabayResponses.created(
-                    response, URI.create("/api/v1/auth/users/" + response.id())));
+        .then(ZeabayResponses.ok("User registered successfully"));
   }
 
   @Operation(
@@ -114,8 +106,7 @@ public class AuthController {
       description = "Validates the token sent by mail and activates the user account in Keycloak.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Email verified successfully"),
-    @ApiResponse(responseCode = "400", description = "Token expired or already used"),
-    @ApiResponse(responseCode = "404", description = "Invalid token")
+    @ApiResponse(responseCode = "400", description = "Invalid or expired verification code")
   })
   @PostMapping("/verify")
   public Mono<ZeabayApiResponse<String>> verifyEmail(
@@ -196,8 +187,7 @@ public class AuthController {
           "Validates the 6-digit OTP sent to the user's email before allowing password reset.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "OTP is valid"),
-    @ApiResponse(responseCode = "400", description = "OTP expired, used, or invalid format"),
-    @ApiResponse(responseCode = "404", description = "Invalid OTP or user not found")
+    @ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
   })
   @PostMapping("/verify-reset-otp")
   public Mono<ZeabayApiResponse<String>> verifyResetOtp(
@@ -212,8 +202,9 @@ public class AuthController {
       description = "Resets user password using the OTP verified previously.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Password reset successfully"),
-    @ApiResponse(responseCode = "400", description = "OTP expired, used, or invalid format"),
-    @ApiResponse(responseCode = "404", description = "OTP not found or user not found")
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid or expired OTP, or password validation failed")
   })
   @PostMapping("/reset-password")
   public Mono<ZeabayApiResponse<String>> resetPassword(

@@ -89,11 +89,11 @@ services:
   consul:
     image: hashicorp/consul:1.22.5
     container_name: pulse-consul
-    command: ["agent", "-dev", "-client=0.0.0.0", "-ui"]
+    command: [ "agent", "-dev", "-client=0.0.0.0", "-ui" ]
     ports:
       - "8500:8500"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8500/v1/status/leader" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -114,7 +114,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HEALTH_ENABLED: "true"
-    command: ["start-dev", "--import-realm"]
+    command: [ "start-dev", "--import-realm" ]
     ports:
       - "9080:8080"
       - "9090:9000"
@@ -133,68 +133,68 @@ services:
     restart: unless-stopped
     networks: [ pulse ]
 
-  jaeger:
-    image: jaegertracing/jaeger:2.1.0
-    container_name: pulse-jaeger
-    command: [ "--config", "/etc/jaeger/config.yaml" ]
-    ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
-    volumes:
-      - ./jaeger/jaeger-config.yaml:/etc/jaeger/config.yaml:ro
-    tmpfs:
-      - /tmp
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:16686/ > /dev/null 2>&1 || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    restart: unless-stopped
-    networks: [ pulse ]
+#  jaeger:
+#    image: jaegertracing/jaeger:2.1.0
+#    container_name: pulse-jaeger
+#    command: [ "--config", "/etc/jaeger/config.yaml" ]
+#    ports:
+#      - "16686:16686"
+#      - "4317:4317"
+#      - "4318:4318"
+#    volumes:
+#      - ./jaeger/jaeger-config.yaml:/etc/jaeger/config.yaml:ro
+#    tmpfs:
+#      - /tmp
+#    healthcheck:
+#      test: [ "CMD-SHELL", "wget -qO- http://localhost:16686/ > /dev/null 2>&1 || exit 1" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#      start_period: 15s
+#    restart: unless-stopped
+#    networks: [ pulse ]
 
-  grafana:
-    image: grafana/grafana-oss:11.5.2
-    container_name: pulse-grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    ports:
-      - "3000:3000"
-    volumes:
-      - pulse_grafana_data:/var/lib/grafana
-    depends_on:
-      - jaeger
-    restart: unless-stopped
-    networks: [ pulse ]
+#  grafana:
+#    image: grafana/grafana-oss:11.5.2
+#    container_name: pulse-grafana
+#    environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#      - GF_USERS_ALLOW_SIGN_UP=false
+#    ports:
+#      - "3000:3000"
+#    volumes:
+#      - pulse_grafana_data:/var/lib/grafana
+#    depends_on:
+#      - jaeger
+#    restart: unless-stopped
+#    networks: [ pulse ]
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: pulse-kafka-ui
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: pulse
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-    depends_on:
-      kafka:
-        condition: service_healthy
-    restart: unless-stopped
-    networks: [ pulse ]
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    container_name: pulse-kafka-ui
+#    ports:
+#      - "8090:8080"
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: pulse
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#    restart: unless-stopped
+#    networks: [ pulse ]
 
-  redis-insight:
-    image: redis/redisinsight:latest
-    container_name: pulse-redis-insight
-    ports:
-      - "5540:5540"
-    volumes:
-      - pulse_redis_insight_data:/data
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    networks: [ pulse ]
+#  redis-insight:
+#    image: redis/redisinsight:latest
+#    container_name: pulse-redis-insight
+#    ports:
+#      - "5540:5540"
+#    volumes:
+#      - pulse_redis_insight_data:/data
+#    depends_on:
+#      redis:
+#        condition: service_healthy
+#    restart: unless-stopped
+#    networks: [ pulse ]
 
 volumes:
   pulse_postgres_data:
@@ -209,18 +209,12 @@ volumes:
     name: pulse_kafka_secrets
   pulse_keycloak_data:
     name: pulse_keycloak_data
-  pulse_grafana_data:
-    name: pulse_grafana_data
-  pulse_redis_insight_data:
-    name: pulse_redis_insight_data
+#  pulse_grafana_data:
+#    name: pulse_grafana_data
+#  pulse_redis_insight_data:
+#    name: pulse_redis_insight_data
 
 networks:
   pulse:
     name: pulse_network
     driver: bridge
-
-
-
-
-
-

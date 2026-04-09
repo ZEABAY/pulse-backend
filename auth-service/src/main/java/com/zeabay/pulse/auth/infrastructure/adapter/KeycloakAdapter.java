@@ -12,12 +12,10 @@ import com.zeabay.pulse.auth.application.dto.LoginCommand;
 import com.zeabay.pulse.auth.application.dto.RegisterUserCommand;
 import com.zeabay.pulse.auth.application.port.IdentityProviderPort;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
-@Slf4j
 @Loggable
 @Component
 @RequiredArgsConstructor
@@ -26,7 +24,8 @@ public class KeycloakAdapter implements IdentityProviderPort {
   private final ZeabayKeycloakClient zeabayKeycloakClient;
 
   private static AuthTokenResult toAuthTokenResult(ZeabayTokenResponse r) {
-    return new AuthTokenResult(r.accessToken(), r.refreshToken(), r.expiresIn());
+    return new AuthTokenResult(
+        r.accessToken(), r.refreshToken(), r.expiresIn(), r.refreshExpiresIn());
   }
 
   @Override
@@ -55,14 +54,15 @@ public class KeycloakAdapter implements IdentityProviderPort {
         .map(KeycloakAdapter::toAuthTokenResult)
         .onErrorMap(
             WebClientResponseException.class,
-            ex -> {
-              log.error(
-                  "Keycloak login failed for {}: {} - {}",
-                  command.usernameOrEmail(),
-                  ex.getStatusCode(),
-                  ex.getResponseBodyAsString());
-              return new BusinessException(ErrorCode.UNAUTHORIZED, "Invalid credentials");
-            });
+            ex ->
+                new BusinessException(
+                    ErrorCode.UNAUTHORIZED,
+                    "Keycloak login failed for "
+                        + command.usernameOrEmail()
+                        + ": "
+                        + ex.getStatusCode()
+                        + " - "
+                        + ex.getResponseBodyAsString()));
   }
 
   @Override

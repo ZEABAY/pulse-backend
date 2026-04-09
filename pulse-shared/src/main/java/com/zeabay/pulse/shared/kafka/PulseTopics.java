@@ -17,8 +17,7 @@ public final class PulseTopics {
   // ─── Service names ──────────────────────────────────────────────────────────
 
   static final String AUTH = "auth";
-
-  // add more service constants here as needed
+  static final String MAIL = "mail";
 
   /**
    * Spring property placeholder pattern for Kafka consumer group IDs.
@@ -39,6 +38,23 @@ public final class PulseTopics {
 
   /** Dead-letter queue for {@link #PASSWORD_RESET}. */
   public static final String PASSWORD_RESET_DLQ = PASSWORD_RESET + ".dlq";
+
+  // ─── Mail delivery failure (saga compensation) ─────────────────────────────
+
+  /** Topic on which mail-service publishes email verification delivery failures. */
+  public static final String EMAIL_VERIFICATION_MAIL_FAILED =
+      PREFIX + "." + MAIL + ".email-verification-failed";
+
+  /** Dead-letter queue for {@link #EMAIL_VERIFICATION_MAIL_FAILED}. */
+  public static final String EMAIL_VERIFICATION_MAIL_FAILED_DLQ =
+      EMAIL_VERIFICATION_MAIL_FAILED + ".dlq";
+
+  /** Topic on which mail-service publishes password reset delivery failures. */
+  public static final String PASSWORD_RESET_MAIL_FAILED =
+      PREFIX + "." + MAIL + ".password-reset-failed";
+
+  /** Dead-letter queue for {@link #PASSWORD_RESET_MAIL_FAILED}. */
+  public static final String PASSWORD_RESET_MAIL_FAILED_DLQ = PASSWORD_RESET_MAIL_FAILED + ".dlq";
 
   private PulseTopics() {}
 }

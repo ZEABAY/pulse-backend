@@ -92,6 +92,10 @@
         </dependency>
         <dependency>
             <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-inbox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
             <artifactId>zeabay-keycloak</artifactId>
         </dependency>
         <dependency>
@@ -139,6 +143,11 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>springboot4-dotenv</artifactId>
         </dependency>
     </dependencies>
 

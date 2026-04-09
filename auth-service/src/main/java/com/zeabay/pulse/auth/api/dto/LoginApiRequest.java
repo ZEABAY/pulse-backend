@@ -10,7 +10,7 @@ public record LoginApiRequest(
     @Schema(description = "Username or email address", example = "john_doe", maxLength = 254)
         @NotBlank
         @Size(max = 254)
-        String username,
+        String usernameOrEmail,
     @Schema(
             description =
                 "Password (8-100 chars). Must contain at least one uppercase letter,"
@@ -22,12 +22,12 @@ public record LoginApiRequest(
         @Size(min = 8, max = 100)
         @Pattern(
             regexp =
-                "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~])"
-                    + "[A-Za-z\\d!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~]{8,100}$")
+                "^(?=.*[a-zçğıöşü])(?=.*[A-ZÇĞİÖŞÜ])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~])"
+                    + "[A-Za-zÇĞİÖŞÜçğıöşü\\d!@#$%^&*()_+\\-=\\[\\]{}|;:'\",.<>?/`~]{8,100}$")
         String password) {
 
   @Override
   public String toString() {
-    return "LoginApiRequest[username=" + username + ", password=***]";
+    return "LoginApiRequest[usernameOrEmail=" + usernameOrEmail + ", password=***]";
   }
 }

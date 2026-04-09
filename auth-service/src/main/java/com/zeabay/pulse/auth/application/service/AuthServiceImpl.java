@@ -200,13 +200,19 @@ public class AuthServiceImpl implements AuthService {
     return verificationTokenRepository
         .findByToken(token)
         .switchIfEmpty(
-            Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid verification token")))
+            Mono.error(
+                new BusinessException(
+                    ErrorCode.BAD_REQUEST, "Verification token not found for email=" + email)))
         .flatMap(this::validateToken)
         .flatMap(
             vt ->
                 userRepository
                     .findById(vt.getUserId())
-                    .switchIfEmpty(Mono.error(new BusinessException(ErrorCode.USER_NOT_FOUND)))
+                    .switchIfEmpty(
+                        Mono.error(
+                            new BusinessException(
+                                ErrorCode.BAD_REQUEST,
+                                "User not found for userId=" + vt.getUserId())))
                     .flatMap(user -> markTokenUsedAndActivateUser(vt, user, email)))
         .flatMap(
             savedUser -> identityProviderPort.setEmailVerified(savedUser.getKeycloakId(), true))
@@ -227,7 +233,15 @@ public class AuthServiceImpl implements AuthService {
   private Mono<AuthUser> markTokenUsedAndActivateUser(
       AuthVerificationToken vt, AuthUser user, String email) {
     if (!email.equalsIgnoreCase(user.getEmail())) {
-      return Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid token"));
+      return Mono.error(
+          new BusinessException(
+              ErrorCode.BAD_REQUEST,
+              "Email mismatch for userId="
+                  + user.getId()
+                  + ", expected="
+                  + user.getEmail()
+                  + ", got="
+                  + email));
     }
     vt.setUsedAt(Instant.now());
     return verificationTokenRepository
@@ -319,7 +333,9 @@ public class AuthServiceImpl implements AuthService {
               return Mono.just(true); // Signal success
             })
         .switchIfEmpty(
-            Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid or expired token")))
+            Mono.error(
+                new BusinessException(
+                    ErrorCode.BAD_REQUEST, "User or reset token not found for email=" + email)))
         .then();
   }
 
@@ -351,7 +367,9 @@ public class AuthServiceImpl implements AuthService {
                               .thenReturn(true);
                         }))
         .switchIfEmpty(
-            Mono.error(new BusinessException(ErrorCode.NOT_FOUND, "Invalid or expired token")))
+            Mono.error(
+                new BusinessException(
+                    ErrorCode.BAD_REQUEST, "User or reset token not found for email=" + email)))
         .then();
   }
 

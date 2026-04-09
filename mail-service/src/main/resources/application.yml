@@ -48,7 +48,20 @@ logging:
     com.zeabay.pulse.shared.kafka: INFO
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+    baggage:
+      correlation:
+        enabled: true
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+
+zeabay:
+  outbox:
+    polling-interval-ms: 10000

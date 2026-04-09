@@ -42,6 +42,32 @@ public class PulseKafkaTopicsConfiguration {
     return declare(PulseTopics.PASSWORD_RESET_DLQ);
   }
 
+  // ─── Mail delivery failure (saga compensation) ─────────────────────────────
+
+  /** Topic for {@code EmailVerificationMailFailedEvent} (saga compensation). */
+  @Bean
+  public NewTopic emailVerificationMailFailedTopic() {
+    return declare(PulseTopics.EMAIL_VERIFICATION_MAIL_FAILED);
+  }
+
+  /** Dead-letter queue for {@link #emailVerificationMailFailedTopic}. */
+  @Bean
+  public NewTopic emailVerificationMailFailedDlqTopic() {
+    return declare(PulseTopics.EMAIL_VERIFICATION_MAIL_FAILED_DLQ);
+  }
+
+  /** Topic for {@code PasswordResetMailFailedEvent}. */
+  @Bean
+  public NewTopic passwordResetMailFailedTopic() {
+    return declare(PulseTopics.PASSWORD_RESET_MAIL_FAILED);
+  }
+
+  /** Dead-letter queue for {@link #passwordResetMailFailedTopic}. */
+  @Bean
+  public NewTopic passwordResetMailFailedDlqTopic() {
+    return declare(PulseTopics.PASSWORD_RESET_MAIL_FAILED_DLQ);
+  }
+
   private static NewTopic declare(String name) {
     return declare(name, 3, 1);
   }

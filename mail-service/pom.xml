@@ -87,6 +87,20 @@
             <groupId>com.zeabay</groupId>
             <artifactId>zeabay-ops</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.zeabay</groupId>
+            <artifactId>zeabay-outbox</artifactId>
+        </dependency>
+
+        <!-- Observability -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -128,6 +142,7 @@
                     </schemas>
                     <locations>
                         <location>classpath:db/migration</location>
+                        <location>classpath:com/zeabay/common/outbox/db/migration</location>
                     </locations>
                 </configuration>
             </plugin>
