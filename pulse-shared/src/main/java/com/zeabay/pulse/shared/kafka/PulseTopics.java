@@ -18,6 +18,7 @@ public final class PulseTopics {
 
   static final String AUTH = "auth";
   static final String MAIL = "mail";
+  static final String PROFILE = "profile";
 
   /**
    * Spring property placeholder pattern for Kafka consumer group IDs.
@@ -38,6 +39,14 @@ public final class PulseTopics {
 
   /** Dead-letter queue for {@link #PASSWORD_RESET}. */
   public static final String PASSWORD_RESET_DLQ = PASSWORD_RESET + ".dlq";
+
+  // ─── User verification (profile creation trigger) ──────────────────────────
+
+  /** Topic on which auth-service publishes user verified events. */
+  public static final String USER_VERIFIED = PREFIX + "." + AUTH + ".user-verified";
+
+  /** Dead-letter queue for {@link #USER_VERIFIED}. */
+  public static final String USER_VERIFIED_DLQ = USER_VERIFIED + ".dlq";
 
   // ─── Mail delivery failure (saga compensation) ─────────────────────────────
 

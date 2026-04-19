@@ -42,6 +42,20 @@ public class PulseKafkaTopicsConfiguration {
     return declare(PulseTopics.PASSWORD_RESET_DLQ);
   }
 
+  // ─── User verification (profile creation trigger) ─────────────────────────
+
+  /** Topic for {@code UserVerifiedEvent}. */
+  @Bean
+  public NewTopic userVerifiedTopic() {
+    return declare(PulseTopics.USER_VERIFIED);
+  }
+
+  /** Dead-letter queue for failed user verified messages. */
+  @Bean
+  public NewTopic userVerifiedDlqTopic() {
+    return declare(PulseTopics.USER_VERIFIED_DLQ);
+  }
+
   // ─── Mail delivery failure (saga compensation) ─────────────────────────────
 
   /** Topic for {@code EmailVerificationMailFailedEvent} (saga compensation). */

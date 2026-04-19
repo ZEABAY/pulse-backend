@@ -17,7 +17,7 @@ Tüm backend API hataları, `ErrorCode` enum değerleri üzerinden standartlaşt
 messageKey = "error." + ErrorCode.name().toLowerCase()
 ```
 
-> **Örnek:** `USER_ALREADY_EXISTS` → `error.user_already_exists`
+> **Örnek:** `PROFILE_NOT_FOUND` → `error.profile_not_found`
 
 ### Tam Hata Kodu Tablosu
 
@@ -29,6 +29,7 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 | `VALIDATION_ERROR` | `error.validation`¹ | Form veya veri doğrulama hatası. Detaylar `validationErrors` dizisindedir |
 | `BUSINESS_ERROR` | `error.business_error` | İş kuralı ihlali (geçersiz mantıksal durum) |
 | `INVALID_INPUT` | `error.invalid_input` | Geçersiz veri girişi |
+| `EMAIL_MISMATCH` | `error.email_mismatch` | İstekteki e-posta, kayıtlı e-posta ile uyuşmuyor |
 
 > ¹ **Dikkat:** `VALIDATION_ERROR` için messageKey `error.validation_error` **değil**, `error.validation` olarak dönmektedir.
 > Bu, `ZeabayGlobalExceptionHandler`'daki özel haritalama sebebiyledir.
@@ -38,9 +39,10 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 | Error Code | Message Key | Açıklama |
 |------------|-------------|----------|
 | `UNAUTHORIZED` | `error.unauthorized` | Kaynağa erişmek için geçerli kimlik doğrulama gerekiyor |
-| `TOKEN_EXPIRED` | `error.token_expired` | Gönderilen yetki token'ının süresi dolmuş |
+| `TOKEN_EXPIRED` | `error.token_expired` | Gönderilen yetki/doğrulama/sıfırlama token'ının süresi dolmuş |
 | `INVALID_TOKEN` | `error.invalid_token` | Gönderilen token bozuk, manipüle edilmiş veya tanınmıyor |
 | `INVALID_CREDENTIALS` | `error.invalid_credentials` | Kullanıcı adı, e-posta veya parola hatalı |
+| `TOKEN_ALREADY_USED` | `error.token_already_used` | Doğrulama veya sıfırlama token'ı daha önce kullanılmış |
 
 #### 403 Forbidden
 
@@ -56,6 +58,10 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 |------------|-------------|----------|
 | `NOT_FOUND` | `error.not_found` | İstenen kaynak, URL veya ID sistemde bulunamadı |
 | `USER_NOT_FOUND` | `error.user_not_found` | İşlem yapılmak istenen kullanıcı sistemde mevcut değil |
+| `PROFILE_NOT_FOUND` | `error.profile_not_found` | Kullanıcıya ait profil kaydı bulunamadı |
+| `PROFILE_NOT_COMPLETED` | `error.profile_not_completed` | Profil kaydı mevcut ancak henüz tamamlanmamış |
+| `VERIFICATION_TOKEN_NOT_FOUND` | `error.verification_token_not_found` | E-posta doğrulama token'ı bulunamadı |
+| `RESET_TOKEN_NOT_FOUND` | `error.reset_token_not_found` | Şifre sıfırlama token'ı bulunamadı |
 
 #### 409 Conflict
 
@@ -64,6 +70,14 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 | `CONFLICT` | `error.conflict` | Kaynak çakışması yaşandı |
 | `USER_ALREADY_EXISTS` | `error.user_already_exists` | Bu e-posta veya kullanıcı adı zaten sisteme kayıtlı |
 | `DUPLICATE_ENTRY` | `error.duplicate_entry` | Mükerrer (tekrar eden) kayıt girilmeye çalışıldı |
+
+#### 422 Unprocessable Entity
+
+| Error Code | Message Key | Açıklama |
+|------------|-------------|----------|
+| `AVATAR_INVALID_OWNERSHIP` | `error.avatar_invalid_ownership` | Avatar anahtarı kullanıcıya ait değil (IDOR koruması) |
+| `AVATAR_UNSUPPORTED_TYPE` | `error.avatar_unsupported_type` | Desteklenmeyen avatar dosya türü yüklendi |
+| `AVATAR_FILE_TOO_LARGE` | `error.avatar_file_too_large` | Avatar dosyası izin verilen maksimum boyutu aşıyor |
 
 #### 429 Too Many Requests
 
@@ -76,6 +90,12 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 | Error Code | Message Key | Açıklama |
 |------------|-------------|----------|
 | `INTERNAL_ERROR` | `error.internal_error` | Sunucu kaynaklı beklenmeyen bir teknik hata meydana geldi |
+
+#### 502 Bad Gateway
+
+| Error Code | Message Key | Açıklama |
+|------------|-------------|----------|
+| `IDENTITY_PROVIDER_ERROR` | `error.identity_provider_error` | Keycloak gibi upstream kimlik sağlayıcısından hata alındı |
 
 #### 503 Service Unavailable
 
@@ -101,6 +121,45 @@ messageKey = "error." + ErrorCode.name().toLowerCase()
 | `BusinessException` | `ex.getErrorCode()` | Dinamik: `error.` + `errorCode.name().toLowerCase()` |
 | `ResponseStatusException` | HTTP durum adı | Dinamik: `error.` + `httpStatus.name().toLowerCase()` |
 | `Exception` (catch-all) | `INTERNAL_ERROR` | Sabit: `error.internal_error` |
+
+---
+
+## Servis Bazlı Hata Kodu Kullanım Haritası
+
+### auth-service
+
+| Senaryo | ErrorCode | Örnek Mesaj |
+|---------|-----------|-------------|
+| E-posta zaten kayıtlı | `USER_ALREADY_EXISTS` | Email is already registered |
+| Yanlış kimlik bilgileri | `UNAUTHORIZED` / `INVALID_CREDENTIALS` | Invalid credentials |
+| E-posta doğrulanmamış | `EMAIL_NOT_VERIFIED` | Email not verified |
+| Doğrulama token'ı bulunamadı | `VERIFICATION_TOKEN_NOT_FOUND` | Verification token not found for email=... |
+| Doğrulama token süresi dolmuş | `TOKEN_EXPIRED` | Email verification token has expired |
+| Doğrulama token kullanılmış | `TOKEN_ALREADY_USED` | Email verification token has already been used |
+| E-posta eşleşmiyor | `EMAIL_MISMATCH` | Email mismatch for userId=... |
+| Sıfırlama token'ı bulunamadı | `RESET_TOKEN_NOT_FOUND` | User or reset token not found for email=... |
+| Sıfırlama token süresi dolmuş | `TOKEN_EXPIRED` | Password reset token has expired |
+| Sıfırlama token kullanılmış | `TOKEN_ALREADY_USED` | Password reset token has already been used |
+| Kullanıcı bulunamadı | `USER_NOT_FOUND` | User not found for userId=... |
+| Oturum açılmamış | `UNAUTHORIZED` | Not authenticated |
+| Refresh token geçersiz | `UNAUTHORIZED` | Invalid or expired refresh token |
+
+### profile-service
+
+| Senaryo | ErrorCode | Örnek Mesaj |
+|---------|-----------|-------------|
+| Profil bulunamadı | `PROFILE_NOT_FOUND` | No profile exists for keycloakId='...' |
+| Profil tamamlanmamış | `PROFILE_NOT_COMPLETED` | Profile for username='...' exists but has not been completed yet |
+| Avatar anahtarı sahipliği hatalı | `AVATAR_INVALID_OWNERSHIP` | Invalid avatar key ownership: key='...' does not match... |
+| Desteklenmeyen dosya türü | `AVATAR_UNSUPPORTED_TYPE` | Unsupported file type 'image/gif'. Allowed: [...] |
+| Dosya boyutu aşıldı | `AVATAR_FILE_TOO_LARGE` | File size 12345678 bytes exceeds maximum of 5 MB |
+
+### zeabay-keycloak (common)
+
+| Senaryo | ErrorCode | Örnek Mesaj |
+|---------|-----------|-------------|
+| Keycloak kullanıcı oluşturma hatası | `IDENTITY_PROVIDER_ERROR` | Keycloak user creation failed: ... |
+| Keycloak giriş hatası | `INVALID_CREDENTIALS` | Keycloak authentication failed: ... |
 
 ---
 
@@ -190,21 +249,31 @@ gösteren **minimum i18n şablonu** bulunmaktadır:
   "error.validation": "Formda hata(lar) var. Lütfen aşağıdaki alanları düzeltin.",
   "error.business_error": "İş kuralı ihlali oluştu.",
   "error.invalid_input": "Girilen veriler geçersiz.",
+  "error.email_mismatch": "E-posta adresi eşleşmiyor.",
   "error.unauthorized": "Bu işlem için giriş yapmanız gerekiyor.",
   "error.token_expired": "Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.",
   "error.invalid_token": "Geçersiz veya süresi dolmuş bir token kullanıldı.",
   "error.invalid_credentials": "Kullanıcı adı veya şifre hatalı.",
+  "error.token_already_used": "Bu kod daha önce kullanılmış.",
   "error.forbidden": "Bu işlemi gerçekleştirme yetkiniz yok.",
   "error.email_not_verified": "Hesabınızı kullanabilmek için e-posta adresinizi doğrulayın.",
   "error.account_disabled": "Hesabınız askıya alınmış.",
   "error.not_found": "Aradığınız kaynak bulunamadı.",
   "error.user_not_found": "Kullanıcı bulunamadı.",
+  "error.profile_not_found": "Profil bulunamadı.",
+  "error.profile_not_completed": "Bu profil henüz tamamlanmamış.",
+  "error.verification_token_not_found": "Doğrulama kodu bulunamadı veya geçersiz.",
+  "error.reset_token_not_found": "Şifre sıfırlama kodu bulunamadı veya geçersiz.",
   "error.conflict": "Kaynak çakışması oluştu.",
   "error.user_already_exists": "Bu e-posta veya kullanıcı adı zaten kayıtlı.",
   "error.duplicate_entry": "Bu kayıt zaten mevcut.",
+  "error.avatar_invalid_ownership": "Bu avatar size ait değil.",
+  "error.avatar_unsupported_type": "Desteklenmeyen dosya türü.",
+  "error.avatar_file_too_large": "Avatar dosyası çok büyük.",
   "error.rate_limit_exceeded": "Çok fazla istek gönderdiniz. Lütfen biraz bekleyin.",
   "error.internal_error": "Beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
   "error.service_unavailable": "Servis şu anda kullanılamıyor.",
+  "error.identity_provider_error": "Kimlik doğrulama servisi hatası. Lütfen tekrar deneyin.",
   "error.gateway_timeout": "Sunucu yanıt vermiyor. Lütfen daha sonra tekrar deneyin."
 }
 ```

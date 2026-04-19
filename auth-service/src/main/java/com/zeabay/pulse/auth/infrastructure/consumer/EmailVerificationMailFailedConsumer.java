@@ -1,6 +1,7 @@
 package com.zeabay.pulse.auth.infrastructure.consumer;
 
 import com.zeabay.common.inbox.BaseConsumer;
+import com.zeabay.common.logging.Loggable;
 import com.zeabay.pulse.auth.application.service.RegistrationRollbackService;
 import com.zeabay.pulse.shared.events.mail.EmailVerificationMailFailedEvent;
 import com.zeabay.pulse.shared.kafka.PulseTopics;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
  * discarded.
  */
 @Slf4j
+@Loggable
 @Component
 public class EmailVerificationMailFailedConsumer
     extends BaseConsumer<EmailVerificationMailFailedEvent> {

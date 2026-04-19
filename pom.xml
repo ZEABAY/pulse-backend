@@ -67,6 +67,7 @@
         <module>pulse-gateway</module>
         <module>auth-service</module>
         <module>mail-service</module>
+        <module>profile-service</module>
     </modules>
 
     <dependencyManagement>

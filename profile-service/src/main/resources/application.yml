@@ -1,0 +1,93 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: profile-service
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/pulse?schema=profile
+    username: ${POSTGRES_USER:pulse}
+    password: ${POSTGRES_PASSWORD:pulse}
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    consul:
+      host: ${CONSUL_HOST:localhost}
+      port: ${CONSUL_PORT:8500}
+      discovery:
+        prefer-ip-address: true
+        instance-id: ${spring.application.name}:${random.value}
+        health-check-path: /actuator/health
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/certs
+
+springdoc:
+  api-docs:
+    enabled: true
+
+keycloak:
+  auth-server-url: http://localhost:9080
+  realm: pulse
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:app},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.zeabay: INFO
+    org.flywaydb: INFO
+    org.springframework.security: WARN
+    org.springframework.web.reactive: WARN
+    org.springframework.r2dbc: WARN
+    io.r2dbc.postgresql: WARN
+    org.apache.kafka: WARN
+    org.apache.kafka.clients.admin: INFO
+    com.zeabay.pulse.shared.kafka: INFO
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    baggage:
+      correlation:
+        enabled: true
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+zeabay:
+  s3:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:pulse-avatars}
+    presigned-url-expiry-seconds: 300
+    max-file-size: 5242880
+  security:
+    public-paths:
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /webjars/**
+  redis:
+    prefix: zeabay
+  outbox:
+    polling-interval-ms: 10000
+  openapi:
+    server-url: ${GATEWAY_URL:http://localhost:8080}
+    server-description: API Gateway (local dev)

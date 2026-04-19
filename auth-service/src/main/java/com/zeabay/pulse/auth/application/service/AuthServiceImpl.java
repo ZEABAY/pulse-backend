@@ -23,6 +23,7 @@ import com.zeabay.pulse.auth.domain.repository.AuthUserRepository;
 import com.zeabay.pulse.auth.domain.repository.AuthVerificationTokenRepository;
 import com.zeabay.pulse.shared.events.auth.EmailVerificationRequestedEvent;
 import com.zeabay.pulse.shared.events.auth.PasswordResetRequestedEvent;
+import com.zeabay.pulse.shared.events.auth.UserVerifiedEvent;
 import com.zeabay.pulse.shared.kafka.PulseTopics;
 import java.time.Duration;
 import java.time.Instant;
@@ -204,34 +205,46 @@ public class AuthServiceImpl implements AuthService {
   @Override
   @Transactional
   public Mono<Void> verifyEmail(String email, String token) {
-    return verificationTokenRepository
-        .findByToken(token)
-        .switchIfEmpty(
-            Mono.error(
-                new BusinessException(
-                    ErrorCode.BAD_REQUEST, "Verification token not found for email=" + email)))
-        .flatMap(this::validateToken)
-        .flatMap(
-            vt ->
-                userRepository
-                    .findById(vt.getUserId())
-                    .switchIfEmpty(
-                        Mono.error(
-                            new BusinessException(
-                                ErrorCode.BAD_REQUEST,
-                                "User not found for userId=" + vt.getUserId())))
-                    .flatMap(user -> markTokenUsedAndActivateUser(vt, user, email)))
-        .flatMap(
-            savedUser -> identityProviderPort.setEmailVerified(savedUser.getKeycloakId(), true))
-        .then();
+    return Mono.deferContextual(
+        ctx -> {
+          String traceId = ctx.getOrDefault(ZeabayConstants.TRACE_ID_CTX_KEY, "");
+          return verificationTokenRepository
+              .findByToken(token)
+              .switchIfEmpty(
+                  Mono.error(
+                      new BusinessException(
+                          ErrorCode.VERIFICATION_TOKEN_NOT_FOUND,
+                          "Verification token not found for email=" + email)))
+              .flatMap(this::validateToken)
+              .flatMap(
+                  vt ->
+                      userRepository
+                          .findById(vt.getUserId())
+                          .switchIfEmpty(
+                              Mono.error(
+                                  new BusinessException(
+                                      ErrorCode.USER_NOT_FOUND,
+                                      "User not found for userId=" + vt.getUserId())))
+                          .flatMap(user -> markTokenUsedAndActivateUser(vt, user, email)))
+              .flatMap(
+                  savedUser ->
+                      identityProviderPort
+                          .setEmailVerified(savedUser.getKeycloakId(), true)
+                          .then(publishUserVerifiedEvent(savedUser, traceId))
+                          .thenReturn(savedUser))
+              .then();
+        });
   }
 
   private Mono<AuthVerificationToken> validateToken(AuthVerificationToken vt) {
     if (vt.isExpired()) {
-      return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+      return Mono.error(
+          new BusinessException(ErrorCode.TOKEN_EXPIRED, "Email verification token has expired"));
     }
     if (vt.isUsed()) {
-      return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token used"));
+      return Mono.error(
+          new BusinessException(
+              ErrorCode.TOKEN_ALREADY_USED, "Email verification token has already been used"));
     }
     return Mono.just(vt);
   }
@@ -242,7 +255,7 @@ public class AuthServiceImpl implements AuthService {
     if (!email.equalsIgnoreCase(user.getEmail())) {
       return Mono.error(
           new BusinessException(
-              ErrorCode.BAD_REQUEST,
+              ErrorCode.EMAIL_MISMATCH,
               "Email mismatch for userId="
                   + user.getId()
                   + ", expected="
@@ -331,18 +344,23 @@ public class AuthServiceImpl implements AuthService {
         .flatMap(
             rt -> {
               if (rt.isExpired()) {
-                return Mono.error(new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+                return Mono.error(
+                    new BusinessException(
+                        ErrorCode.TOKEN_EXPIRED, "Password reset token has expired"));
               }
               if (rt.isUsed()) {
                 return Mono.error(
-                    new BusinessException(ErrorCode.BAD_REQUEST, "Token already used"));
+                    new BusinessException(
+                        ErrorCode.TOKEN_ALREADY_USED,
+                        "Password reset token has already been used"));
               }
               return Mono.just(true); // Signal success
             })
         .switchIfEmpty(
             Mono.error(
                 new BusinessException(
-                    ErrorCode.BAD_REQUEST, "User or reset token not found for email=" + email)))
+                    ErrorCode.RESET_TOKEN_NOT_FOUND,
+                    "User or reset token not found for email=" + email)))
         .then();
   }
 
@@ -359,11 +377,14 @@ public class AuthServiceImpl implements AuthService {
                         rt -> {
                           if (rt.isExpired()) {
                             return Mono.error(
-                                new BusinessException(ErrorCode.BAD_REQUEST, "Token expired"));
+                                new BusinessException(
+                                    ErrorCode.TOKEN_EXPIRED, "Password reset token has expired"));
                           }
                           if (rt.isUsed()) {
                             return Mono.error(
-                                new BusinessException(ErrorCode.BAD_REQUEST, "Token already used"));
+                                new BusinessException(
+                                    ErrorCode.TOKEN_ALREADY_USED,
+                                    "Password reset token has already been used"));
                           }
                           rt.setUsedAt(Instant.now());
                           return passwordResetTokenRepository
@@ -376,7 +397,8 @@ public class AuthServiceImpl implements AuthService {
         .switchIfEmpty(
             Mono.error(
                 new BusinessException(
-                    ErrorCode.BAD_REQUEST, "User or reset token not found for email=" + email)))
+                    ErrorCode.RESET_TOKEN_NOT_FOUND,
+                    "User or reset token not found for email=" + email)))
         .then();
   }
 
@@ -393,6 +415,28 @@ public class AuthServiceImpl implements AuthService {
                   .add(jti, ttlSeconds)
                   .then(identityProviderPort.logout(keycloakId));
             });
+  }
+
+  private Mono<Void> publishUserVerifiedEvent(AuthUser user, String traceId) {
+    Instant now = Instant.now();
+    UserVerifiedEvent event =
+        UserVerifiedEvent.builder()
+            .eventId(tsidGenerator.newId())
+            .traceId(traceId)
+            .occurredAt(now)
+            .userId(String.valueOf(user.getId()))
+            .keycloakId(user.getKeycloakId())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .build();
+    return outboxPort.saveEvent(
+        event.getEventId(),
+        UserVerifiedEvent.EVENT_TYPE,
+        PulseTopics.USER_VERIFIED,
+        AGGREGATE_TYPE,
+        user.getId(),
+        event,
+        traceId);
   }
 
   private Mono<Void> validateOrError(Object command) {

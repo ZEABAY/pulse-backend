@@ -1,6 +1,7 @@
 package com.zeabay.pulse.auth.infrastructure.adapter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zeabay.common.logging.Loggable;
 import com.zeabay.common.outbox.BaseProducer;
 import com.zeabay.common.outbox.OutboxEventRepository;
 import com.zeabay.pulse.auth.application.port.out.OutboxPort;
@@ -16,6 +17,7 @@ import reactor.core.publisher.Mono;
  * repository dependencies.
  */
 @Slf4j
+@Loggable
 @Component
 public class OutboxAdapter extends BaseProducer implements OutboxPort {
 

@@ -48,6 +48,25 @@ spring:
               filters:
                 - RewritePath=/v3/api-docs/auth-service, /v3/api-docs
 
+            - id: profile-service-api
+              uri: lb://profile-service
+              predicates:
+                - Path=/api/v1/profiles/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@ipKeyResolver}"
+
+            - id: profile-service-api-docs
+              uri: lb://profile-service
+              predicates:
+                - Path=/v3/api-docs/profile-service
+              filters:
+                - RewritePath=/v3/api-docs/profile-service, /v3/api-docs
+
 # CORS is handled by ZeabayCorsAutoConfiguration (zeabay-webflux).
 # To override allowed origins for production, set:
 #   zeabay.cors.allowed-origins: https://yourapp.com
@@ -59,6 +78,8 @@ springdoc:
     urls:
       - name: auth-service
         url: /v3/api-docs/auth-service
+      - name: profile-service
+        url: /v3/api-docs/profile-service
 
 management:
   server:

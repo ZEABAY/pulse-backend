@@ -2,6 +2,7 @@ package com.zeabay.pulse.mail.infrastructure.consumer;
 
 import com.zeabay.common.inbox.BaseConsumer;
 import com.zeabay.common.kafka.BaseEvent;
+import com.zeabay.common.logging.Loggable;
 import com.zeabay.pulse.mail.application.service.PulseMailSender;
 import com.zeabay.pulse.mail.domain.MailRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import reactor.core.publisher.Mono;
  * @param <T> the concrete domain event type
  */
 @Slf4j
+@Loggable
 @RequiredArgsConstructor
 public abstract class BaseMailConsumer<T extends BaseEvent> extends BaseConsumer<T> {
 
